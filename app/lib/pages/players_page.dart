@@ -338,7 +338,7 @@ class _AssessmentBar extends StatelessWidget {
 String _normalizePlayerName(String value) => value
     .trim()
     .toLowerCase()
-    .replaceAll(RegExp(r'\\s+'), ' ');
+    .replaceAll(RegExp(r'\s+'), ' ');
 
 List<int>? _manualAssessmentFor(String name) {
   final normalized = _normalizePlayerName(name);
