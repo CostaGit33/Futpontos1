@@ -458,6 +458,10 @@ class _InsightsPageState extends State<InsightsPage> {
             const SizedBox(height: 8),
             _BalancedTeams(players: players),
             const SizedBox(height: 16),
+            const Text('Comparar jogadores', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            _PlayerComparison(players: players),
+            const SizedBox(height: 16),
             const Text('Critérios', style: TextStyle(fontWeight: FontWeight.w900)),
             const Text('Os destaques usam apenas números retornados pela API. Empates são mantidos como destaques equivalentes na ordenação; nenhum dado é estimado.', style: TextStyle(color: AppColors.muted, fontSize: 12)),
           ],
@@ -465,6 +469,101 @@ class _InsightsPageState extends State<InsightsPage> {
       );
     },
   );
+}
+
+class _PlayerComparison extends StatefulWidget {
+  const _PlayerComparison({required this.players});
+  final List<Player> players;
+  @override
+  State<_PlayerComparison> createState() => _PlayerComparisonState();
+}
+
+class _PlayerComparisonState extends State<_PlayerComparison> {
+  int? _firstId;
+  int? _secondId;
+
+  @override
+  void didUpdateWidget(covariant _PlayerComparison oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final ids = widget.players.map((p) => p.id).toSet();
+    if (_firstId == null || !ids.contains(_firstId)) {
+      _firstId = widget.players.isEmpty ? null : widget.players.first.id;
+    }
+    if (_secondId == null || !ids.contains(_secondId) || _secondId == _firstId) {
+      _secondId = widget.players.length > 1 ? widget.players[1].id : null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.players.length < 2) {
+      return const Card(child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Text('São necessários pelo menos dois jogadores para comparar.', style: TextStyle(color: AppColors.muted)),
+      ));
+    }
+    final firstId = _firstId ?? widget.players.first.id;
+    final secondId = _secondId ?? widget.players[1].id;
+    final first = widget.players.firstWhere((p) => p.id == firstId, orElse: () => widget.players.first);
+    final second = widget.players.firstWhere((p) => p.id == secondId, orElse: () => widget.players[1]);
+    Widget selector(String label, int selected, ValueChanged<int?> onChanged) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 11)),
+        DropdownButton<int>(
+          value: selected,
+          isExpanded: true,
+          items: widget.players.map((p) => DropdownMenuItem<int>(
+            value: p.id,
+            child: Text(p.name, overflow: TextOverflow.ellipsis),
+          )).toList(),
+          onChanged: onChanged,
+        ),
+      ],
+    );
+    final metrics = <(String, int, int)>[
+      ('Pontos', first.points, second.points),
+      ('Vitórias', first.wins, second.wins),
+      ('Gols', first.goals, second.goals),
+      ('Defesas', first.saves, second.saves),
+      ('Empates', first.draws, second.draws),
+      ('Infrações', first.fouls, second.fouls),
+    ];
+    return Card(child: Padding(
+      padding: const EdgeInsets.all(14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(child: selector('Jogador A', first.id, (value) {
+            if (value != null) setState(() {
+              _firstId = value;
+              if (_secondId == value) _secondId = widget.players.firstWhere((p) => p.id != value).id;
+            });
+          })),
+          const SizedBox(width: 12),
+          Expanded(child: selector('Jogador B', second.id, (value) {
+            if (value != null) setState(() {
+              _secondId = value;
+              if (_firstId == value) _firstId = widget.players.firstWhere((p) => p.id != value).id;
+            });
+          })),
+        ]),
+        const Divider(),
+        ...metrics.map((metric) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          child: Row(children: [
+            Expanded(child: Text(metric.$1, style: const TextStyle(fontWeight: FontWeight.w700))),
+            SizedBox(width: 42, child: Text('${metric.$2}', textAlign: TextAlign.end,
+              style: TextStyle(fontWeight: FontWeight.w900, color: metric.$2 >= metric.$3 ? AppColors.gold : AppColors.muted))),
+            const Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Text('×', style: TextStyle(color: AppColors.muted))),
+            SizedBox(width: 42, child: Text('${metric.$3}', textAlign: TextAlign.start,
+              style: TextStyle(fontWeight: FontWeight.w900, color: metric.$3 >= metric.$2 ? AppColors.gold : AppColors.muted))),
+          ]),
+        )),
+        const SizedBox(height: 4),
+        const Text('Comparação restrita aos números da competência atual.', style: TextStyle(color: AppColors.muted, fontSize: 11)),
+      ]),
+    ));
+  }
 }
 
 class _InsightTile extends StatelessWidget {
