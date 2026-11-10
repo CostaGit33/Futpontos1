@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'core/api_client.dart';
 import 'core/app_theme.dart';
 import 'data/player.dart';
@@ -37,6 +38,16 @@ class _AppHomeState extends State<AppHome> {
     Icons.space_dashboard_outlined, Icons.leaderboard_outlined,
     Icons.groups_outlined, Icons.sports_handball_outlined, Icons.insights_outlined, Icons.grid_view_outlined,
   ];
+
+  void _selectTab(int value) {
+    if (value == selected) {
+      HapticFeedback.selectionClick();
+      setState(() => _refreshVersion++);
+      return;
+    }
+    HapticFeedback.selectionClick();
+    setState(() => selected = value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,18 +96,39 @@ class _AppHomeState extends State<AppHome> {
       body: Row(children: [
         if (wide) NavigationRail(
           selectedIndex: selected,
-          onDestinationSelected: (value) => setState(() => selected = value),
+          onDestinationSelected: _selectTab,
           labelType: NavigationRailLabelType.all,
           destinations: [
             for (var i = 0; i < labels.length; i++)
               NavigationRailDestination(icon: Icon(icons[i]), label: Text(labels[i])),
           ],
         ),
-        Expanded(child: IndexedStack(index: selected, children: pages)),
+        Expanded(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              for (var i = 0; i < pages.length; i++)
+                IgnorePointer(
+                  ignoring: selected != i,
+                  child: AnimatedOpacity(
+                    opacity: selected == i ? 1 : 0,
+                    duration: const Duration(milliseconds: 240),
+                    curve: Curves.easeOutCubic,
+                    child: AnimatedSlide(
+                      offset: selected == i ? Offset.zero : const Offset(0, .025),
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeOutCubic,
+                      child: pages[i],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ]),
       bottomNavigationBar: wide ? null : NavigationBar(
         selectedIndex: selected,
-        onDestinationSelected: (value) => setState(() => selected = value),
+        onDestinationSelected: _selectTab,
         destinations: [
           for (var i = 0; i < labels.length; i++)
             NavigationDestination(icon: Icon(icons[i]), label: labels[i]),
@@ -204,7 +236,10 @@ class _DashboardPageState extends State<DashboardPage> {
               const Card(child: Padding(padding: EdgeInsets.all(20), child: Text('Nenhum jogador cadastrado.')))
             else
               ...players.take(3).toList().asMap().entries.map((entry) =>
-                _PlayerTile(position: entry.key + 1, player: entry.value)),
+                _Entrance(
+                  delay: Duration(milliseconds: 55 * entry.key),
+                  child: _PlayerTile(position: entry.key + 1, player: entry.value),
+                )),
           ],
         );
       },
@@ -319,11 +354,58 @@ class _RankingPageState extends State<RankingPage> {
               const Card(child: Padding(padding: EdgeInsets.all(20), child: Text('Nenhum jogador cadastrado.')))
             else
               ...players.asMap().entries.map((entry) =>
-                _PlayerTile(position: entry.key + 1, player: entry.value, detailed: true)),
+                _Entrance(
+                  delay: Duration(milliseconds: 35 * entry.key),
+                  child: _PlayerTile(position: entry.key + 1, player: entry.value, detailed: true),
+                )),
           ],
         ),
       );
     },
+  );
+}
+
+class _Entrance extends StatefulWidget {
+  const _Entrance({required this.child, this.delay = Duration.zero});
+  final Widget child;
+  final Duration delay;
+
+  @override
+  State<_Entrance> createState() => _EntranceState();
+}
+
+class _EntranceState extends State<_Entrance> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    );
+    _opacity = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, .10),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    Future<void>.delayed(widget.delay, () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+    opacity: _opacity,
+    child: SlideTransition(position: _slide, child: widget.child),
   );
 }
 
@@ -348,7 +430,29 @@ class _Metric extends StatelessWidget {
     padding: const EdgeInsets.all(13),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
       Icon(icon, color: AppColors.redLight, size: 20),
-      Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+      if (int.tryParse(value) case final number?)
+        TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0, end: number.toDouble()),
+          duration: const Duration(milliseconds: 850),
+          curve: Curves.easeOutCubic,
+          builder: (context, animated, _) => Text(
+            animated.round().toString(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+          ),
+        )
+      else
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          child: Text(
+            value,
+            key: ValueKey(value),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+          ),
+        ),
       Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.muted, fontSize: 11)),
     ]),
   ));
@@ -448,10 +552,10 @@ class _InsightsPageState extends State<InsightsPage> {
             const SizedBox(height: 5),
             const Text('Indicadores calculados a partir dos registros da competência atual.', style: TextStyle(color: AppColors.muted)),
             const SizedBox(height: 18),
-            _InsightTile(title: 'Pontuador', player: byPoints.isEmpty ? null : byPoints.first, value: (p) => '${p.points} pontos', icon: Icons.bolt),
-            _InsightTile(title: 'Artilheiro', player: byGoals.isEmpty || byGoals.first.goals == 0 ? null : byGoals.first, value: (p) => '${p.goals} gols', icon: Icons.sports_soccer),
-            _InsightTile(title: 'Mais defesas', player: bySaves.isEmpty || bySaves.first.saves == 0 ? null : bySaves.first, value: (p) => '${p.saves} defesas', icon: Icons.shield_outlined),
-            _InsightTile(title: 'Mais vitórias', player: byWins.isEmpty || byWins.first.wins == 0 ? null : byWins.first, value: (p) => '${p.wins} vitórias', icon: Icons.emoji_events_outlined),
+            _Entrance(delay: const Duration(milliseconds: 0), child: _InsightTile(title: 'Pontuador', player: byPoints.isEmpty ? null : byPoints.first, value: (p) => '${p.points} pontos', icon: Icons.bolt)),
+            _Entrance(delay: const Duration(milliseconds: 55), child: _InsightTile(title: 'Artilheiro', player: byGoals.isEmpty || byGoals.first.goals == 0 ? null : byGoals.first, value: (p) => '${p.goals} gols', icon: Icons.sports_soccer)),
+            _Entrance(delay: const Duration(milliseconds: 110), child: _InsightTile(title: 'Mais defesas', player: bySaves.isEmpty || bySaves.first.saves == 0 ? null : bySaves.first, value: (p) => '${p.saves} defesas', icon: Icons.shield_outlined)),
+            _Entrance(delay: const Duration(milliseconds: 165), child: _InsightTile(title: 'Mais vitórias', player: byWins.isEmpty || byWins.first.wins == 0 ? null : byWins.first, value: (p) => '${p.wins} vitórias', icon: Icons.emoji_events_outlined)),
             const Text('Comparar jogadores', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
             const SizedBox(height: 8),
             _PlayerComparison(players: players),
@@ -532,6 +636,7 @@ class _PlayerComparisonState extends State<_PlayerComparison> {
           Expanded(child: selector('Jogador A', first.id, (value) {
             if (value != null) {
               setState(() {
+                HapticFeedback.selectionClick();
                 _firstId = value;
                 if (_secondId == value) {
                   _secondId = widget.players.firstWhere((p) => p.id != value).id;
@@ -543,6 +648,7 @@ class _PlayerComparisonState extends State<_PlayerComparison> {
           Expanded(child: selector('Jogador B', second.id, (value) {
             if (value != null) {
               setState(() {
+                HapticFeedback.selectionClick();
                 _secondId = value;
                 if (_firstId == value) {
                   _firstId = widget.players.firstWhere((p) => p.id != value).id;
