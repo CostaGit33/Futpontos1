@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'core/api_client.dart';
 import 'core/app_theme.dart';
 import 'data/player.dart';
+import 'data/history.dart';
 import 'pages/history_page.dart';
 import 'pages/goalkeepers_page.dart';
 import 'pages/players_page.dart';
@@ -454,6 +455,8 @@ class _InsightsPageState extends State<InsightsPage> {
             const Text('Comparar jogadores', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
             const SizedBox(height: 8),
             _PlayerComparison(players: players),
+            const SizedBox(height: 14),
+            _MonthlyPointsComparison(api: widget.api),
             const SizedBox(height: 16),
             const Text('Critérios', style: TextStyle(fontWeight: FontWeight.w900)),
             const Text('Os destaques usam apenas números retornados pela API. Empates são mantidos como destaques equivalentes na ordenação; nenhum dado é estimado.', style: TextStyle(color: AppColors.muted, fontSize: 12)),
@@ -565,6 +568,141 @@ class _PlayerComparisonState extends State<_PlayerComparison> {
       ]),
     ));
   }
+}
+
+class _MonthlyPointsComparison extends StatefulWidget {
+  const _MonthlyPointsComparison({required this.api});
+  final ApiClient api;
+
+  @override
+  State<_MonthlyPointsComparison> createState() => _MonthlyPointsComparisonState();
+}
+
+class _MonthlyPointsComparisonState extends State<_MonthlyPointsComparison> {
+  late Future<HistoryCollection> _history;
+
+  @override
+  void initState() {
+    super.initState();
+    _history = HistoryCollection.load(widget.api);
+  }
+
+  Future<void> _reload() async {
+    final next = HistoryCollection.load(widget.api);
+    setState(() => _history = next);
+    try {
+      await next;
+    } catch (_) {}
+  }
+
+  String _monthLabel(String key) {
+    final parts = key.split('-');
+    if (parts.length != 2) return key;
+    final year = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    const names = [
+      'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+      'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
+    ];
+    if (year == null || month == null || month < 1 || month > 12) return key;
+    return '${names[month - 1]}/$year';
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<HistoryCollection>(
+    future: _history,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return Card(child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Pontuação total por mês', style: TextStyle(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 6),
+            const Text('Não foi possível carregar o histórico mensal.', style: TextStyle(color: AppColors.muted, fontSize: 12)),
+            Align(alignment: Alignment.centerRight, child: TextButton.icon(
+              onPressed: _reload,
+              icon: const Icon(Icons.refresh, size: 17),
+              label: const Text('Tentar novamente'),
+            )),
+          ]),
+        ));
+      }
+      if (!snapshot.hasData) {
+        return const Card(child: Padding(
+          padding: EdgeInsets.all(18),
+          child: Center(child: CircularProgressIndicator()),
+        ));
+      }
+
+      final totals = <String, int>{};
+      for (final season in snapshot.data!.seasons) {
+        final key = season.competition.key;
+        final points = season.ranking.fold<int>(0, (sum, player) => sum + player.points);
+        totals.update(key, (value) => value + points, ifAbsent: () => points);
+      }
+      final months = totals.entries.toList()
+        ..sort((a, b) => a.key.compareTo(b.key));
+      final maxPoints = months.fold<int>(1, (max, item) => item.value > max ? item.value : max);
+
+      return Card(child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Expanded(child: Text('Pontuação total por mês', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900))),
+            IconButton(
+              tooltip: 'Atualizar histórico mensal',
+              onPressed: _reload,
+              icon: const Icon(Icons.refresh_rounded, size: 19),
+              visualDensity: VisualDensity.compact,
+            ),
+          ]),
+          const Text('Soma dos pontos de todos os jogadores em cada mês.', style: TextStyle(color: AppColors.muted, fontSize: 11)),
+          const SizedBox(height: 14),
+          if (months.isEmpty)
+            const Text('Ainda não há competências com pontuação registrada.', style: TextStyle(color: AppColors.muted, fontSize: 12))
+          else
+            ...months.asMap().entries.map((entry) {
+              final index = entry.key;
+              final month = entry.value;
+              final previous = index > 0 ? months[index - 1].value : null;
+              final difference = previous == null ? null : month.value - previous;
+              final comparison = difference == null
+                  ? 'Primeiro mês'
+                  : difference > 0
+                      ? '+$difference pts vs. mês anterior'
+                      : difference < 0
+                          ? '$difference pts vs. mês anterior'
+                          : 'Mesmo total do mês anterior';
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 13),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Expanded(child: Text(_monthLabel(month.key), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12))),
+                    Text('${month.value} pts', style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.redLight, fontSize: 12)),
+                  ]),
+                  const SizedBox(height: 5),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: LinearProgressIndicator(
+                      value: (month.value / maxPoints).clamp(0, 1).toDouble(),
+                      minHeight: 8,
+                      backgroundColor: AppColors.raised,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(comparison, style: const TextStyle(color: AppColors.muted, fontSize: 10)),
+                ]),
+              );
+            }),
+          if (snapshot.data!.failedCompetitions.isNotEmpty)
+            Text(
+              'Atenção: ${snapshot.data!.failedCompetitions.length} competência(s) não puderam ser incluídas.',
+              style: const TextStyle(color: AppColors.gold, fontSize: 11),
+            ),
+        ]),
+      ));
+    },
+  );
 }
 
 class _InsightTile extends StatelessWidget {
