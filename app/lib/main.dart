@@ -161,8 +161,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 crossAxisSpacing: 10, mainAxisSpacing: 10,
                 childAspectRatio: count == 4 ? 1.7 : 1.45,
                 children: [
-                  const _Metric(label: 'Jogadores', value: '${players.length}', icon: Icons.groups_outlined),
-                  const _Metric(label: 'Pontos somados', value: '$sum', icon: Icons.bolt),
+                  _Metric(label: 'Jogadores', value: '${players.length}', icon: Icons.groups_outlined),
+                  _Metric(label: 'Pontos somados', value: '$sum', icon: Icons.bolt),
                   const _Metric(label: 'API', value: 'Online', icon: Icons.cloud_done_outlined),
                   const _Metric(label: 'Ranking', value: 'Atual', icon: Icons.leaderboard_outlined),
                 ],
