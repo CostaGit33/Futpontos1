@@ -82,7 +82,7 @@ class HistoryCollection {
       ..sort((a, b) => b.key.compareTo(a.key));
     final results = await Future.wait(competitions.map((competition) async {
       try {
-        final ranking = await api.list('/competencias/' + competition.id.toString() + '/jogadores');
+        final ranking = await api.list('/competencias/${competition.id}/jogadores');
         return SeasonData(competition: competition, ranking: ranking.map(Player.fromJson).toList());
       } catch (_) {
         return null;
