@@ -311,7 +311,7 @@ class _RadarPainter extends CustomPainter {
     const count = 5;
     final center = Offset(size.width / 2, size.height / 2);
     final radius = math.min(size.width * 0.31, size.height * 0.36);
-    final angleOffset = -math.pi / 2;
+    const angleOffset = -math.pi / 2;
     Offset point(int index, double scale) {
       final angle = angleOffset + (2 * math.pi * index / count);
       return Offset(center.dx + math.cos(angle) * radius * scale, center.dy + math.sin(angle) * radius * scale);
