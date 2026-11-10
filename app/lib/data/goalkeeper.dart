@@ -16,6 +16,7 @@ class Goalkeeper {
     this.fouls = 0,
     this.goals = 0,
     this.competition,
+    this.assessment,
   });
 
   final int id;
@@ -23,12 +24,23 @@ class Goalkeeper {
   final String? photo;
   final int points, wins, draws, losses, saves, goalsConceded, matches, fouls, goals;
   final String? competition;
+  /// Avaliação técnica manual (0–20): defesa, ataque, velocidade, habilidade e passe.
+  final List<double>? assessment;
 
   double get concededAverage => matches == 0 ? 0 : goalsConceded / matches;
   double get winRate => matches == 0 ? 0 : wins * 100 / matches;
 
   factory Goalkeeper.fromJson(Map<String, dynamic> json) {
     int n(String key) => int.tryParse('${json[key] ?? 0}') ?? 0;
+    final rawAssessment = json['avaliacao'];
+    final assessmentMap = rawAssessment is Map ? rawAssessment : null;
+    final assessmentKeys = ['defesa', 'ataque', 'velocidade', 'habilidade', 'passe'];
+    final assessmentValues = assessmentMap == null
+        ? <double>[]
+        : assessmentKeys.map((key) => double.tryParse('${assessmentMap[key] ?? ''}')).toList();
+    final assessment = assessmentValues.length == 5 && assessmentValues.every((value) => value != null)
+        ? assessmentValues.cast<double>()
+        : null;
     return Goalkeeper(
       id: n('id'),
       name: (json['nome'] ?? 'Goleiro').toString(),
@@ -43,6 +55,7 @@ class Goalkeeper {
       fouls: n('infracoes'),
       goals: n('gols'),
       competition: json['competencia']?.toString(),
+      assessment: assessment,
     );
   }
 
