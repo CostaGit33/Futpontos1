@@ -99,9 +99,15 @@ class _PlayersPageState extends State<PlayersPage> {
         'Gols' => p.goals,
         'Defesas' => p.saves,
         'Vitórias' => p.wins,
+        'Infrações' => p.fouls,
         _ => p.points,
       };
-      players.sort((a, b) => value(b).compareTo(value(a)));
+      players.sort((a, b) {
+        final primary = value(b).compareTo(value(a));
+        if (primary != 0) return _sort == 'Infrações' ? -primary : primary;
+        final points = b.points.compareTo(a.points);
+        return points != 0 ? points : a.name.compareTo(b.name);
+      });
       return RefreshIndicator(
         onRefresh: _refresh,
         child: ListView(
@@ -124,7 +130,7 @@ class _PlayersPageState extends State<PlayersPage> {
             const SizedBox(height: 10),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: Row(children: ['Pontos', 'Gols', 'Defesas', 'Vitórias'].map((item) =>
+              child: Row(children: ['Pontos', 'Gols', 'Defesas', 'Vitórias', 'Infrações'].map((item) =>
                 Padding(
                   padding: const EdgeInsets.only(right: 7),
                   child: ChoiceChip(label: Text(item), selected: _sort == item,
