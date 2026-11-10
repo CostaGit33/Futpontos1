@@ -286,12 +286,13 @@ class _PlayerTile extends StatelessWidget {
     margin: const EdgeInsets.only(bottom: 9),
     child: ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-      leading: CircleAvatar(
-        backgroundColor: AppColors.raised,
-        backgroundImage: player.photo == null || player.photo!.isEmpty ? null : NetworkImage(player.photo!),
-        child: player.photo == null || player.photo!.isEmpty
-          ? Text('#$position', style: TextStyle(fontWeight: FontWeight.w900, color: position <= 3 ? AppColors.gold : Colors.white))
-          : null,
+      leading: PlayerAvatar(
+        photo: player.photo,
+        radius: 20,
+        fallback: Text('#$position', style: TextStyle(
+          fontWeight: FontWeight.w900,
+          color: position <= 3 ? AppColors.gold : Colors.white,
+        )),
       ),
       title: Text(player.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
       subtitle: detailed ? Text('V ${player.wins}  •  G ${player.goals}  •  D ${player.saves}  •  E ${player.draws}  •  I ${player.fouls}', style: const TextStyle(color: AppColors.muted, fontSize: 11)) : null,
