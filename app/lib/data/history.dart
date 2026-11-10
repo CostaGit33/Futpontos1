@@ -80,14 +80,19 @@ class HistoryCollection {
     final raw = await api.list('/competencias');
     final competitions = raw.map(Competition.fromJson).where((c) => c.id > 0).toList()
       ..sort((a, b) => b.key.compareTo(a.key));
-    final results = await Future.wait(competitions.map((competition) async {
-      try {
-        final ranking = await api.list('/competencias/${competition.id}/jogadores');
-        return SeasonData(competition: competition, ranking: ranking.map(Player.fromJson).toList());
-      } catch (_) {
-        return null;
-      }
-    }));
+    final results = <SeasonData?>[];
+    for (var start = 0; start < competitions.length; start += 4) {
+      final batch = competitions.skip(start).take(4);
+      final batchResults = await Future.wait(batch.map((competition) async {
+        try {
+          final ranking = await api.list('/competencias/${competition.id}/jogadores');
+          return SeasonData(competition: competition, ranking: ranking.map(Player.fromJson).toList());
+        } catch (_) {
+          return null;
+        }
+      }));
+      results.addAll(batchResults);
+    }
     final seasons = results.whereType<SeasonData>().toList()
       ..sort((a, b) => b.competition.key.compareTo(a.competition.key));
     final loaded = seasons.map((s) => s.competition.id).toSet();
