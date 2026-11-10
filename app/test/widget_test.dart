@@ -6,6 +6,6 @@ void main() {
     await tester.pumpWidget(const FutPontosApp());
     expect(find.text('FUTPONTOS'), findsOneWidget);
     expect(find.text('Início'), findsOneWidget);
-    expect(find.text('Ranking'), findsOneWidget);
+    expect(find.text('Classificação'), findsOneWidget);
   });
 }
