@@ -179,6 +179,7 @@ class _PlayersPageState extends State<PlayersPage> {
                       // Mantém os dados da listagem se o endpoint individual falhar.
                     }
                     List<int>? assessment;
+                    String? assessmentSource;
                     try {
                       final records = await widget.loadAssessments();
                       for (final record in records) {
@@ -190,21 +191,25 @@ class _PlayersPageState extends State<PlayersPage> {
                         if (keys.every((key) => rawAssessment[key] != null)) {
                           assessment = keys.map((key) =>
                             int.tryParse('${rawAssessment[key]}') ?? 0).toList();
+                          assessmentSource = 'Avaliação manual sincronizada pela API • escala de 0 a 20';
                         }
                         break;
                       }
                     } catch (_) {
                       // A avaliação manual local continua disponível como contingência.
                     }
-                    assessment ??= _manualAssessmentFor(entry.value.name);
+                    if (assessment == null) {
+                      assessment = _manualAssessmentFor(entry.value.name);
+                      if (assessment != null) {
+                        assessmentSource = 'Avaliação manual local de referência • escala de 0 a 20';
+                      }
+                    }
                     if (!context.mounted) return;
                     Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => PlayerProfilePage(
                         player: selectedPlayer,
                         assessment: assessment,
-                        assessmentSource: assessment == null
-                            ? null
-                            : 'Avaliação individual • escala de 0 a 20',
+                        assessmentSource: assessmentSource,
                       ),
                     ));
                   },
