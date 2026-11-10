@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'core/api_client.dart';
 import 'core/app_theme.dart';
 import 'data/player.dart';
+import 'pages/history_page.dart';
 
 void main() => runApp(const FutPontosApp());
 
@@ -27,7 +28,7 @@ class _AppHomeState extends State<AppHome> {
   int selected = 0;
   final api = ApiClient();
 
-  static const labels = ['Início', 'Classificação', 'Jogadores', 'Desempenho', 'Mais'];
+  static const labels = ['Início', 'Classificação', 'Jogadores', 'Histórico', 'Mais'];
   static const icons = [
     Icons.space_dashboard_outlined, Icons.leaderboard_outlined,
     Icons.groups_outlined, Icons.insights_outlined, Icons.grid_view_outlined,
@@ -40,7 +41,7 @@ class _AppHomeState extends State<AppHome> {
       DashboardPage(api: api, onRanking: () => setState(() => selected = 1)),
       RankingPage(api: api),
       const PlaceholderPage(title: 'Jogadores', detail: 'Migração dos perfis em andamento.', icon: Icons.groups_2_outlined),
-      const PlaceholderPage(title: 'Desempenho', detail: 'Estatísticas e avaliações técnicas serão integradas nesta seção.', icon: Icons.query_stats),
+      HistoryPage(api: api),
       const PlaceholderPage(title: 'Mais funcionalidades', detail: 'Goleiros, competições, vídeos e montagem de times.', icon: Icons.apps),
     ];
     return Scaffold(
