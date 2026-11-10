@@ -55,6 +55,9 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release
 
+      - name: Generate Web platform for CI build
+        run: flutter create --platforms=web .
+
       - name: Build release web
         run: flutter build web --release
 
