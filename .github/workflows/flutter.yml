@@ -1,15 +1,17 @@
-name: Flutter validation
+name: Flutter validation and build
 
 on:
   push:
     branches: [main]
     paths:
       - 'app/**'
+      - 'docs/**'
       - '.github/workflows/flutter.yml'
   pull_request:
     branches: [main]
     paths:
       - 'app/**'
+      - 'docs/**'
       - '.github/workflows/flutter.yml'
   workflow_dispatch:
 
@@ -17,112 +19,51 @@ permissions:
   contents: read
 
 jobs:
-  bootstrap-lock:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+  validate-and-build:
+    name: Analyze, test and build Flutter
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     defaults:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-      - name: Resolve and verify dependencies
-        run: |
-          flutter pub get
-          flutter pub deps --style=compact
-      - name: Commit generated lockfile
-        working-directory: .
-        run: |
-          git add app/pubspec.lock
-          if ! git diff --cached --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "build: lock Flutter dependencies"
-            git push
-          fi
+          fetch-depth: 1
 
-  validate:
-    needs: bootstrap-lock
-    if: always() && (needs.bootstrap-lock.result == 'success' || needs.bootstrap-lock.result == 'skipped')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    defaults:
-      run:
-        working-directory: app
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref || github.sha }}
-      - uses: subosito/flutter-action@v2
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
+
       - name: Flutter version
         run: flutter --version
+
       - name: Resolve locked dependencies
-        run: |
-          if [ -f pubspec.lock ]; then
-            flutter pub get --enforce-lockfile
-          else
-            flutter pub get
-          fi
+        run: flutter pub get --enforce-lockfile
+
       - name: Verify dependency graph
         run: flutter pub deps --style=compact
+
       - name: Static analysis
         run: flutter analyze
+
       - name: Unit and widget tests
         run: flutter test
 
-  android-build:
-    name: Android APK and AAB
-    needs: validate
-    if: needs.validate.result == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    defaults:
-      run:
-        working-directory: app
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref || github.sha }}
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-      - name: Generate native Android project
-        run: flutter create --platforms=android --org br.com.futpontos .
-      - name: Commit native Android platform
-        working-directory: .
-        run: |
-          git add app/android
-          if ! git diff --cached --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "build: add native Android platform"
-            git push
-          fi
-      - name: Resolve dependencies
-        run: flutter pub get --enforce-lockfile
       - name: Build release APK
         run: flutter build apk --release
-      - name: Build Android App Bundle
-        run: flutter build appbundle --release
-      - name: Upload Android artifacts
+
+      - name: Build release web
+        run: flutter build web --release
+
+      - name: Upload Flutter artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: futpontos1-android-${{ github.run_number }}
+          name: futpontos-flutter-${{ github.run_number }}
           if-no-files-found: error
           retention-days: 14
           path: |
             app/build/app/outputs/flutter-apk/app-release.apk
-            app/build/app/outputs/bundle/release/app-release.aab
+            app/build/web

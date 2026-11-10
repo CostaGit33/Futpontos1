@@ -3,6 +3,7 @@ import 'core/api_client.dart';
 import 'core/app_theme.dart';
 import 'data/player.dart';
 import 'pages/history_page.dart';
+import 'pages/goalkeepers_page.dart';
 import 'pages/players_page.dart';
 
 void main() => runApp(const FutPontosApp());
@@ -29,10 +30,10 @@ class _AppHomeState extends State<AppHome> {
   int selected = 0;
   final api = ApiClient();
 
-  static const labels = ['Início', 'Classificação', 'Jogadores', 'Histórico', 'Mais'];
+  static const labels = ['Início', 'Classificação', 'Jogadores', 'Goleiros', 'Histórico', 'Mais'];
   static const icons = [
     Icons.space_dashboard_outlined, Icons.leaderboard_outlined,
-    Icons.groups_outlined, Icons.insights_outlined, Icons.grid_view_outlined,
+    Icons.groups_outlined, Icons.sports_handball_outlined, Icons.insights_outlined, Icons.grid_view_outlined,
   ];
 
   @override
@@ -51,6 +52,7 @@ class _AppHomeState extends State<AppHome> {
         },
         loadAssessments: () => api.list('/desempenho'),
       ),
+      GoalkeepersPage(api: api),
       HistoryPage(api: api),
       const PlaceholderPage(title: 'Mais funcionalidades', detail: 'Goleiros, competições, vídeos e montagem de times.', icon: Icons.apps),
     ];
