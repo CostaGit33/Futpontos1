@@ -87,7 +87,7 @@ jobs:
     if: needs.validate.result == 'success'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     defaults:
       run:
         working-directory: app
@@ -101,6 +101,16 @@ jobs:
           cache: true
       - name: Generate native Android project
         run: flutter create --platforms=android --org br.com.futpontos .
+      - name: Commit native Android platform
+        working-directory: .
+        run: |
+          git add app/android
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "build: add native Android platform"
+            git push
+          fi
       - name: Resolve dependencies
         run: flutter pub get --enforce-lockfile
       - name: Build release APK
