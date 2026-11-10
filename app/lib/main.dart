@@ -41,7 +41,16 @@ class _AppHomeState extends State<AppHome> {
     final pages = [
       DashboardPage(api: api, onRanking: () => setState(() => selected = 1)),
       RankingPage(api: api),
-      PlayersPage(loadPlayers: () async => (await api.list('/jogadores')).map((e) => Player.fromJson(e)).toList()),
+      PlayersPage(
+        loadPlayers: () async => (await api.list('/jogadores')).map((e) => Player.fromJson(e)).toList(),
+        loadPlayerDetails: (id) async {
+          final data = await api.get('/jogadores/$id');
+          if (data is Map<String, dynamic>) return data;
+          if (data is Map) return Map<String, dynamic>.from(data);
+          throw const FormatException('Formato inválido no perfil individual da API.');
+        },
+        loadAssessments: () => api.list('/desempenho'),
+      ),
       HistoryPage(api: api),
       const PlaceholderPage(title: 'Mais funcionalidades', detail: 'Goleiros, competições, vídeos e montagem de times.', icon: Icons.apps),
     ];
