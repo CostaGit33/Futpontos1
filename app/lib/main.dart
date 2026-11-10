@@ -536,14 +536,18 @@ class _PlayerComparisonState extends State<_PlayerComparison> {
           Expanded(child: selector('Jogador A', first.id, (value) {
             if (value != null) setState(() {
               _firstId = value;
-              if (_secondId == value) _secondId = widget.players.firstWhere((p) => p.id != value).id;
+              if (_secondId == value) {
+                _secondId = widget.players.firstWhere((p) => p.id != value).id;
+              }
             });
           })),
           const SizedBox(width: 12),
           Expanded(child: selector('Jogador B', second.id, (value) {
             if (value != null) setState(() {
               _secondId = value;
-              if (_firstId == value) _firstId = widget.players.firstWhere((p) => p.id != value).id;
+              if (_firstId == value) {
+                _firstId = widget.players.firstWhere((p) => p.id != value).id;
+              }
             });
           })),
         ]),
