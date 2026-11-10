@@ -3,6 +3,7 @@ import 'core/api_client.dart';
 import 'core/app_theme.dart';
 import 'data/player.dart';
 import 'pages/history_page.dart';
+import 'pages/players_page.dart';
 
 void main() => runApp(const FutPontosApp());
 
@@ -40,7 +41,7 @@ class _AppHomeState extends State<AppHome> {
     final pages = [
       DashboardPage(api: api, onRanking: () => setState(() => selected = 1)),
       RankingPage(api: api),
-      const PlaceholderPage(title: 'Jogadores', detail: 'Migração dos perfis em andamento.', icon: Icons.groups_2_outlined),
+      PlayersPage(loadPlayers: () async => (await api.list('/jogadores')).map((e) => Player.fromJson(e as Map<String, dynamic>)).toList()),
       HistoryPage(api: api),
       const PlaceholderPage(title: 'Mais funcionalidades', detail: 'Goleiros, competições, vídeos e montagem de times.', icon: Icons.apps),
     ];
