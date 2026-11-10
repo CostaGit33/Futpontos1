@@ -451,13 +451,6 @@ class _InsightsPageState extends State<InsightsPage> {
             _InsightTile(title: 'Artilheiro', player: byGoals.isEmpty || byGoals.first.goals == 0 ? null : byGoals.first, value: (p) => '${p.goals} gols', icon: Icons.sports_soccer),
             _InsightTile(title: 'Mais defesas', player: bySaves.isEmpty || bySaves.first.saves == 0 ? null : bySaves.first, value: (p) => '${p.saves} defesas', icon: Icons.shield_outlined),
             _InsightTile(title: 'Mais vitórias', player: byWins.isEmpty || byWins.first.wins == 0 ? null : byWins.first, value: (p) => '${p.wins} vitórias', icon: Icons.emoji_events_outlined),
-            const SizedBox(height: 14),
-            const Text('Montagem equilibrada de times', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 5),
-            const Text('Distribuição automática por pontuação; não altera escalações nem grava partidas.', style: TextStyle(color: AppColors.muted, fontSize: 12)),
-            const SizedBox(height: 8),
-            _BalancedTeams(players: players),
-            const SizedBox(height: 16),
             const Text('Comparar jogadores', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
             const SizedBox(height: 8),
             _PlayerComparison(players: players),
@@ -587,42 +580,6 @@ class _InsightTile extends StatelessWidget {
     subtitle: Text(player == null ? 'Sem registros' : player!.name),
     trailing: player == null ? null : Text(value(player!), style: const TextStyle(color: AppColors.redLight, fontWeight: FontWeight.w900)),
   ));
-}
-
-class _BalancedTeams extends StatelessWidget {
-  const _BalancedTeams({required this.players});
-  final List<Player> players;
-  @override
-  Widget build(BuildContext context) {
-    final sorted = players.toList()..sort((a, b) => b.points.compareTo(a.points));
-    final first = <Player>[];
-    final second = <Player>[];
-    var firstTotal = 0;
-    var secondTotal = 0;
-    for (final player in sorted) {
-      if (firstTotal <= secondTotal) {
-        first.add(player);
-        firstTotal += player.points;
-      } else {
-        second.add(player);
-        secondTotal += player.points;
-      }
-    }
-    Widget team(String name, List<Player> team, int total) => Expanded(child: Card(
-      child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(name, style: const TextStyle(fontWeight: FontWeight.w900)),
-        Text('${team.length} atletas • $total pts', style: const TextStyle(color: AppColors.muted, fontSize: 11)),
-        const Divider(),
-        if (team.isEmpty) const Text('Sem jogadores', style: TextStyle(color: AppColors.muted))
-        else ...team.map((p) => Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis))),
-      ])),
-    ));
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      team('Time A', first, firstTotal),
-      const SizedBox(width: 8),
-      team('Time B', second, secondTotal),
-    ]);
-  }
 }
 
 class PlaceholderPage extends StatelessWidget {
