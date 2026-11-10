@@ -15,6 +15,10 @@ on:
       - '.github/workflows/flutter.yml'
   workflow_dispatch:
 
+concurrency:
+  group: futpontos-flutter-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
