@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import '../core/points_calculator.dart';
 
 class Player {
@@ -28,13 +29,73 @@ class Player {
     return Player(
       id: n('id'),
       name: (json['nome'] ?? 'Jogador').toString(),
-      photo: json['foto']?.toString(),
+      photo: resolvePlayerPhoto(json['foto'] ?? json['foto_url'] ?? json['imagem'] ?? json['avatar']),
       points: json['pontos'] == null
           ? PointsCalculator.calculate(
               wins: wins, goals: goals, saves: saves,
               draws: draws, fouls: fouls)
           : n('pontos'),
       wins: wins, goals: goals, saves: saves, draws: draws, fouls: fouls,
+    );
+  }
+}
+
+/// O PWA resolve caminhos relativos a partir do domínio do site.
+/// O Flutter precisa transformar esses caminhos em URLs absolutas.
+String? resolvePlayerPhoto(dynamic value) {
+  final raw = value?.toString().trim() ?? '';
+  if (raw.isEmpty || raw.toLowerCase() == 'null' || raw.toLowerCase() == 'undefined') return null;
+  final parsed = Uri.tryParse(raw);
+  if (parsed == null) return null;
+  if (parsed.hasScheme) {
+    if (parsed.scheme != 'http' && parsed.scheme != 'https') return null;
+    return parsed.toString();
+  }
+  if (raw.startsWith('//')) return 'https:$raw';
+  return Uri.parse('https://www.semdominio.online/').resolveUri(parsed).toString();
+}
+
+class PlayerAvatar extends StatelessWidget {
+  const PlayerAvatar({super.key, required this.photo, required this.radius, required this.fallback});
+  final String? photo;
+  final double radius;
+  final Widget fallback;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = resolvePlayerPhoto(photo);
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: const Color(0xFF252B38),
+      child: url == null
+          ? fallback
+          : ClipOval(
+              child: Image.network(
+                url,
+                width: radius * 2,
+                height: radius * 2,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => fallback,
+                loadingBuilder: (context, child, progress) => progress == null
+                    ? child
+                    : SizedBox(
+                        width: radius * 2,
+                        height: radius * 2,
+                        child: Center(
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              value: progress.expectedTotalBytes == null
+                                  ? null
+                                  : progress.cumulativeBytesLoaded / progress.expectedTotalBytes!,
+                            ),
+                          ),
+                        ),
+                      ),
+              ),
+            ),
     );
   }
 }
