@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   validate:
@@ -24,15 +24,46 @@ jobs:
         working-directory: app
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
+
       - name: Flutter version
         run: flutter --version
+
+      # Bootstrap once; subsequent builds use the committed lockfile.
       - name: Resolve dependencies
-        run: flutter pub get
+        run: |
+          if [ -f pubspec.lock ]; then
+            flutter pub get --enforce-lockfile
+          else
+            flutter pub get
+          fi
+
+      - name: Verify resolved dependency graph
+        run: flutter pub deps --style=compact
+
+      # Persist the first generated lockfile on main, not from pull requests.
+      - name: Commit generated lockfile
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: .
+        run: |
+          if [ -f app/pubspec.lock ]; then
+            git add app/pubspec.lock
+            if ! git diff --cached --quiet; then
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git commit -m "build: lock Flutter dependencies"
+              git push
+            fi
+          fi
+
       - name: Static analysis
         run: flutter analyze
+
       - name: Unit and widget tests
         run: flutter test
