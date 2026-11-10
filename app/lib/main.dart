@@ -41,7 +41,7 @@ class _AppHomeState extends State<AppHome> {
     final pages = [
       DashboardPage(api: api, onRanking: () => setState(() => selected = 1)),
       RankingPage(api: api),
-      PlayersPage(loadPlayers: () async => (await api.list('/jogadores')).map((e) => Player.fromJson(e as Map<String, dynamic>)).toList()),
+      PlayersPage(loadPlayers: () async => (await api.list('/jogadores')).map((e) => Player.fromJson(e)).toList()),
       HistoryPage(api: api),
       const PlaceholderPage(title: 'Mais funcionalidades', detail: 'Goleiros, competições, vídeos e montagem de times.', icon: Icons.apps),
     ];
