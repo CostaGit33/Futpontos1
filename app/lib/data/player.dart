@@ -29,7 +29,10 @@ class Player {
     return Player(
       id: n('id'),
       name: (json['nome'] ?? 'Jogador').toString(),
-      photo: resolvePlayerPhoto(json['foto'] ?? json['foto_url'] ?? json['imagem'] ?? json['avatar']),
+      photo: resolvePlayerPhoto(json['foto']) ??
+          resolvePlayerPhoto(json['foto_url']) ??
+          resolvePlayerPhoto(json['imagem']) ??
+          resolvePlayerPhoto(json['avatar']),
       points: json['pontos'] == null
           ? PointsCalculator.calculate(
               wins: wins, goals: goals, saves: saves,
