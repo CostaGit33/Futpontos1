@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import '../core/api_client.dart';
 import '../core/app_theme.dart';
 import '../data/goalkeeper.dart';
@@ -193,6 +194,15 @@ class _GoalkeeperDetailPageState extends State<GoalkeeperDetailPage> {
           const SizedBox(height: 14),
           _StatsGrid(goalkeeper: g),
           const SizedBox(height: 20),
+          const Text('AVALIAÇÃO TÉCNICA DE CAMPO', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: AppColors.redLight, letterSpacing: 0.6)),
+          const SizedBox(height: 5),
+          const Text('Avaliação individual cadastrada manualmente • escala de 0 a 20', style: TextStyle(color: AppColors.muted, fontSize: 12)),
+          const SizedBox(height: 8),
+          if (g.assessment == null)
+            const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('Este goleiro ainda não possui avaliação técnica manual cadastrada.')))
+          else
+            _GoalkeeperAssessment(values: g.assessment!),
+          const SizedBox(height: 20),
           const Text('Partidas registradas', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
           const SizedBox(height: 8),
           if (snapshot.data!.matches.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(18), child: Text('Nenhuma partida de goleiro foi registrada ainda.', style: TextStyle(color: AppColors.muted)))) else ...snapshot.data!.matches.map((m) => Card(child: ListTile(leading: Icon(_resultIcon(m.result), color: _resultColor(m.result)), title: Text(m.result.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text('${m.saves} defesas • ${m.goalsConceded} gols sofridos'), trailing: Text('${m.points} pts', style: const TextStyle(color: AppColors.redLight, fontWeight: FontWeight.w900))))),
@@ -244,3 +254,99 @@ class _Error extends StatelessWidget {
 
 IconData _resultIcon(String result) => result == 'vitoria' ? Icons.emoji_events : result == 'empate' ? Icons.handshake_outlined : Icons.close;
 Color _resultColor(String result) => result == 'vitoria' ? AppColors.gold : result == 'empate' ? Colors.blueAccent : AppColors.redLight;
+
+
+class _GoalkeeperAssessment extends StatelessWidget {
+  const _GoalkeeperAssessment({required this.values});
+  final List<double> values;
+  static const labels = ['Defesa', 'Ataque', 'Velocidade', 'Habilidade', 'Passe'];
+
+  @override
+  Widget build(BuildContext context) {
+    final average = values.reduce((a, b) => a + b) / values.length;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Radar de desempenho', style: TextStyle(fontWeight: FontWeight.w800)),
+                Text('${average.toStringAsFixed(1)}/20', style: const TextStyle(color: AppColors.redLight, fontWeight: FontWeight.w900)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 250,
+              width: double.infinity,
+              child: CustomPaint(
+                painter: _RadarPainter(values: values, lineColor: AppColors.redLight, gridColor: AppColors.muted.withValues(alpha: 0.35)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: List.generate(values.length, (index) => Text(
+                '${labels[index]}: ${values[index].toStringAsFixed(0)}',
+                style: const TextStyle(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w700),
+              )),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RadarPainter extends CustomPainter {
+  _RadarPainter({required this.values, required this.lineColor, required this.gridColor});
+  final List<double> values;
+  final Color lineColor;
+  final Color gridColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const count = 5;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width * 0.31, size.height * 0.36);
+    final angleOffset = -math.pi / 2;
+    Offset point(int index, double scale) {
+      final angle = angleOffset + (2 * math.pi * index / count);
+      return Offset(center.dx + math.cos(angle) * radius * scale, center.dy + math.sin(angle) * radius * scale);
+    }
+
+    final gridPaint = Paint()..color = gridColor..style = PaintingStyle.stroke..strokeWidth = 1;
+    for (var level = 1; level <= 4; level++) {
+      final path = Path();
+      for (var i = 0; i < count; i++) {
+        final p = point(i, level / 4);
+        if (i == 0) { path.moveTo(p.dx, p.dy); } else { path.lineTo(p.dx, p.dy); }
+      }
+      path.close();
+      canvas.drawPath(path, gridPaint);
+    }
+    for (var i = 0; i < count; i++) {
+      final p = point(i, 1);
+      canvas.drawLine(center, p, gridPaint);
+    }
+
+    final dataPath = Path();
+    for (var i = 0; i < count; i++) {
+      final p = point(i, (values[i].clamp(0, 20)) / 20);
+      if (i == 0) { dataPath.moveTo(p.dx, p.dy); } else { dataPath.lineTo(p.dx, p.dy); }
+    }
+    dataPath.close();
+    canvas.drawPath(dataPath, Paint()..color = lineColor.withValues(alpha: 0.18)..style = PaintingStyle.fill);
+    canvas.drawPath(dataPath, Paint()..color = lineColor..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeJoin = StrokeJoin.round);
+    for (var i = 0; i < count; i++) {
+      final p = point(i, (values[i].clamp(0, 20)) / 20);
+      canvas.drawCircle(p, 4, Paint()..color = lineColor);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RadarPainter oldDelegate) =>
+      oldDelegate.values != values || oldDelegate.lineColor != lineColor || oldDelegate.gridColor != gridColor;
+}
