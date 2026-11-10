@@ -44,9 +44,18 @@ class _GoalkeepersPageState extends State<GoalkeepersPage> {
         'Gols' => g.goals,
         'Defesas' => g.saves,
         'Vitórias' => g.wins,
+        'Gols sofridos' => -g.goalsConceded,
+        'Infrações' => -g.fouls,
         _ => g.points,
       };
-      keepers.sort((a,b) => value(b).compareTo(value(a)));
+      keepers.sort((a,b) {
+        final primary = value(b).compareTo(value(a));
+        if (primary != 0) return primary;
+        final saves = b.saves.compareTo(a.saves);
+        if (saves != 0) return saves;
+        final conceded = a.goalsConceded.compareTo(b.goalsConceded);
+        return conceded != 0 ? conceded : a.name.compareTo(b.name);
+      });
 
       return RefreshIndicator(
         onRefresh: _reload,
@@ -65,7 +74,7 @@ class _GoalkeepersPageState extends State<GoalkeepersPage> {
             const SizedBox(height: 10),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: Row(children: ['Pontos', 'Gols', 'Defesas', 'Vitórias'].map((item) =>
+              child: Row(children: ['Pontos', 'Gols', 'Defesas', 'Vitórias', 'Gols sofridos', 'Infrações'].map((item) =>
                 Padding(padding: const EdgeInsets.only(right: 7), child: ChoiceChip(
                   label: Text(item), selected: _sort == item,
                   onSelected: (_) => setState(() => _sort = item),
@@ -160,17 +169,17 @@ class _GoalkeeperDetailPageState extends State<GoalkeeperDetailPage> {
   @override
   void initState() { super.initState(); _future = _load(); }
   Future<_GoalkeeperDetails> _load() async {
-    final results = await Future.wait([
-      widget.api.get('/goleiros/${widget.goalkeeper.id}'),
-      widget.api.list('/goleiros/${widget.goalkeeper.id}/partidas'),
-      widget.api.list('/goleiros/${widget.goalkeeper.id}/evolucao'),
+    final results = await Future.wait<dynamic>([
+      widget.api.get('/goleiros/${widget.goalkeeper.id}').catchError((_) => null),
+      widget.api.list('/goleiros/${widget.goalkeeper.id}/partidas').catchError((_) => <Map<String, dynamic>>[]),
+      widget.api.list('/goleiros/${widget.goalkeeper.id}/evolucao').catchError((_) => <Map<String, dynamic>>[]),
     ]);
     final detail = results[0] is Map ? Goalkeeper.fromJson(Map<String, dynamic>.from(results[0] as Map)) : widget.goalkeeper;
-    final matches = (results[1] as List)
+    final matches = (results[1] is List ? results[1] as List : const <dynamic>[])
         .whereType<Map>()
         .map((item) => GoalkeeperMatch.fromJson(Map<String, dynamic>.from(item)))
         .toList();
-    final evolution = (results[2] as List)
+    final evolution = (results[2] is List ? results[2] as List : const <dynamic>[])
         .whereType<Map>()
         .map((item) => Map<String, dynamic>.from(item))
         .toList();
@@ -193,6 +202,8 @@ class _GoalkeeperDetailPageState extends State<GoalkeeperDetailPage> {
           ]))),
           const SizedBox(height: 14),
           _StatsGrid(goalkeeper: g),
+          const SizedBox(height: 18),
+          _GoalkeeperAchievements(goalkeeper: g),
           const SizedBox(height: 20),
           const Text('AVALIAÇÃO TÉCNICA DE CAMPO', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: AppColors.redLight, letterSpacing: 0.6)),
           const SizedBox(height: 5),
@@ -214,6 +225,44 @@ class _GoalkeeperDetailPageState extends State<GoalkeeperDetailPage> {
       },
     ),
   );
+}
+
+class _GoalkeeperAchievements extends StatelessWidget {
+  const _GoalkeeperAchievements({required this.goalkeeper});
+  final Goalkeeper goalkeeper;
+
+  @override
+  Widget build(BuildContext context) {
+    final g = goalkeeper;
+    final items = <(String, String, String, bool)>[
+      ('Primeira muralha', 'Registre 10 defesas', '🧤', g.saves >= 10),
+      ('Paredão', 'Registre 25 defesas', '🧱', g.saves >= 25),
+      ('Vitória', 'Conquiste 5 vitórias', '🏆', g.wins >= 5),
+      ('Experiente', 'Dispute 10 partidas', '⭐', g.matches >= 10),
+      ('Segurança', 'Média de até 1 gol sofrido em 5 ou mais jogos', '🛡️', g.matches >= 5 && g.concededAverage <= 1),
+      ('Disciplina', 'Finalize sem infrações registradas', '🤝', g.matches > 0 && g.fouls == 0),
+    ];
+    final unlocked = items.where((item) => item.$4).length;
+    return Card(child: Padding(
+      padding: const EdgeInsets.all(14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          const Text('CONQUISTAS DO GOLEIRO', style: TextStyle(fontWeight: FontWeight.w900)),
+          Text('$unlocked/${items.length}', style: const TextStyle(color: AppColors.redLight, fontWeight: FontWeight.w900)),
+        ]),
+        const SizedBox(height: 8),
+        ...items.map((item) => ListTile(
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          leading: Text(item.$3, style: const TextStyle(fontSize: 21)),
+          title: Text(item.$1, style: const TextStyle(fontWeight: FontWeight.w800)),
+          subtitle: Text(item.$2, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+          trailing: Icon(item.$4 ? Icons.check_circle : Icons.lock_outline,
+            color: item.$4 ? AppColors.gold : AppColors.muted),
+        )),
+      ]),
+    ));
+  }
 }
 
 class _StatsGrid extends StatelessWidget {
