@@ -28,6 +28,7 @@ class AppHome extends StatefulWidget {
 
 class _AppHomeState extends State<AppHome> {
   int selected = 0;
+  int _refreshVersion = 0;
   final api = ApiClient();
 
   static const labels = ['Início', 'Classificação', 'Jogadores', 'Goleiros', 'Histórico', 'Mais'];
@@ -40,9 +41,10 @@ class _AppHomeState extends State<AppHome> {
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 850;
     final pages = [
-      DashboardPage(api: api, onRanking: () => setState(() => selected = 1)),
-      RankingPage(api: api),
+      DashboardPage(key: ValueKey('dashboard-$_refreshVersion'), api: api, onRanking: () => setState(() => selected = 1)),
+      RankingPage(key: ValueKey('ranking-$_refreshVersion'), api: api),
       PlayersPage(
+        key: ValueKey('players-$_refreshVersion'),
         loadPlayers: () async => (await api.list('/jogadores')).map((e) => Player.fromJson(e)).toList(),
         loadPlayerDetails: (id) async {
           final data = await api.get('/jogadores/$id');
@@ -52,9 +54,9 @@ class _AppHomeState extends State<AppHome> {
         },
         loadAssessments: () => api.list('/desempenho'),
       ),
-      GoalkeepersPage(api: api),
-      HistoryPage(api: api),
-      const PlaceholderPage(title: 'Mais funcionalidades', detail: 'Goleiros, competições, vídeos e montagem de times.', icon: Icons.apps),
+      GoalkeepersPage(key: ValueKey('goalkeepers-$_refreshVersion'), api: api),
+      HistoryPage(key: ValueKey('history-$_refreshVersion'), api: api),
+      InsightsPage(key: ValueKey('insights-$_refreshVersion'), api: api),
     ];
     return Scaffold(
       appBar: AppBar(
@@ -73,7 +75,7 @@ class _AppHomeState extends State<AppHome> {
         actions: [
           IconButton(
             tooltip: 'Atualizar',
-            onPressed: () => setState(() {}),
+            onPressed: () => setState(() => _refreshVersion++),
             icon: const Icon(Icons.refresh_rounded),
           ),
           const SizedBox(width: 8),
@@ -138,7 +140,15 @@ class _DashboardPageState extends State<DashboardPage> {
           ]);
         }
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        final players = snapshot.data!.map((e) => Player.fromJson(e as Map<String, dynamic>)).toList();
+        final players = snapshot.data!.map((e) => Player.fromJson(e as Map<String, dynamic>)).toList()
+          ..sort((a, b) {
+            final points = b.points.compareTo(a.points);
+            if (points != 0) return points;
+            final wins = b.wins.compareTo(a.wins);
+            if (wins != 0) return wins;
+            final goals = b.goals.compareTo(a.goals);
+            return goals != 0 ? goals : a.name.compareTo(b.name);
+          });
         final sum = players.fold<int>(0, (total, player) => total + player.points);
         return ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -176,12 +186,14 @@ class _DashboardPageState extends State<DashboardPage> {
                 children: [
                   _Metric(label: 'Jogadores', value: '${players.length}', icon: Icons.groups_outlined),
                   _Metric(label: 'Pontos somados', value: '$sum', icon: Icons.bolt),
-                  const _Metric(label: 'API', value: 'Online', icon: Icons.cloud_done_outlined),
-                  const _Metric(label: 'Ranking', value: 'Atual', icon: Icons.leaderboard_outlined),
+                  _ApiStatusMetric(api: widget.api),
+                  _Metric(label: 'Ativos', value: '${players.where((p) => p.points != 0 || p.wins + p.goals + p.saves + p.draws + p.fouls > 0).length}', icon: Icons.query_stats),
                 ],
               );
             }),
             const SizedBox(height: 24),
+            _GoalkeeperHighlight(api: widget.api),
+            const SizedBox(height: 18),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Text('Destaques', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
               TextButton(onPressed: widget.onRanking, child: const Text('Ver ranking')),
@@ -197,6 +209,69 @@ class _DashboardPageState extends State<DashboardPage> {
       },
     ),
   );
+}
+
+class _ApiStatusMetric extends StatelessWidget {
+  const _ApiStatusMetric({required this.api});
+  final ApiClient api;
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>>(
+    future: api.health(),
+    builder: (context, snapshot) {
+      final online = snapshot.hasData && snapshot.data?['status'] == 'ok';
+      final checking = !snapshot.hasData && !snapshot.hasError;
+      final label = checking ? 'Verificando' : online ? 'Online' : 'Indisponível';
+      return _Metric(
+        label: 'API / banco',
+        value: label,
+        icon: online ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
+      );
+    },
+  );
+}
+
+class _GoalkeeperHighlight extends StatelessWidget {
+  const _GoalkeeperHighlight({required this.api});
+  final ApiClient api;
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<List<Map<String, dynamic>>>(
+    future: api.list('/goleiros'),
+    builder: (context, snapshot) {
+      if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+        return const SizedBox.shrink();
+      }
+      final keepers = snapshot.data!.map((item) {
+        int number(String key) => int.tryParse('${item[key] ?? 0}') ?? 0;
+        return _KeeperSummary(
+          name: (item['nome'] ?? 'Goleiro').toString(),
+          photo: resolvePlayerPhoto(item['foto']) ?? resolvePlayerPhoto(item['foto_url']),
+          points: number('pontos'),
+          saves: number('defesas') == 0 ? number('defesa') : number('defesas'),
+          conceded: number('gols_sofridos'),
+        );
+      }).toList()..sort((a, b) {
+        final points = b.points.compareTo(a.points);
+        return points != 0 ? points : b.saves.compareTo(a.saves);
+      });
+      final best = keepers.first;
+      return Card(child: ListTile(
+        leading: PlayerAvatar(photo: best.photo, radius: 24,
+          fallback: const Icon(Icons.sports_handball, color: AppColors.gold)),
+        title: const Text('Destaque dos goleiros', style: TextStyle(fontWeight: FontWeight.w800)),
+        subtitle: Text('${best.name} • ${best.saves} defesas • ${best.conceded} gols sofridos'),
+        trailing: Text('${best.points} pts', style: const TextStyle(color: AppColors.redLight, fontWeight: FontWeight.w900)),
+      ));
+    },
+  );
+}
+
+class _KeeperSummary {
+  const _KeeperSummary({required this.name, required this.photo, required this.points, required this.saves, required this.conceded});
+  final String name;
+  final String? photo;
+  final int points, saves, conceded;
 }
 
 class RankingPage extends StatefulWidget {
@@ -320,6 +395,127 @@ class _ErrorCard extends StatelessWidget {
       FilledButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh), label: const Text('Tentar novamente')),
     ]),
   ));
+}
+
+class InsightsPage extends StatefulWidget {
+  const InsightsPage({super.key, required this.api});
+  final ApiClient api;
+  @override
+  State<InsightsPage> createState() => _InsightsPageState();
+}
+
+class _InsightsPageState extends State<InsightsPage> {
+  late Future<List<Player>> _players;
+  @override
+  void initState() {
+    super.initState();
+    _players = _load();
+  }
+
+  Future<List<Player>> _load() async =>
+      (await widget.api.list('/jogadores')).map(Player.fromJson).toList();
+
+  Future<void> _refresh() async {
+    final next = _load();
+    setState(() => _players = next);
+    await next;
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<List<Player>>(
+    future: _players,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return Center(child: _ErrorCard(message: snapshot.error.toString(), onRetry: _refresh));
+      }
+      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+      final players = snapshot.data!;
+      final byPoints = players.toList()..sort((a, b) => b.points.compareTo(a.points));
+      final byGoals = players.toList()..sort((a, b) => b.goals.compareTo(a.goals));
+      final bySaves = players.toList()..sort((a, b) => b.saves.compareTo(a.saves));
+      final byWins = players.toList()..sort((a, b) => b.wins.compareTo(a.wins));
+      return RefreshIndicator(
+        onRefresh: _refresh,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(18),
+          children: [
+            Text('CENTRAL DE DESEMPENHO', style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.redLight, letterSpacing: 1.5, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 7),
+            Text('Estatísticas e destaques', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 5),
+            const Text('Indicadores calculados a partir dos registros da competência atual.', style: TextStyle(color: AppColors.muted)),
+            const SizedBox(height: 18),
+            _InsightTile(title: 'Pontuador', player: byPoints.isEmpty ? null : byPoints.first, value: (p) => '${p.points} pontos', icon: Icons.bolt),
+            _InsightTile(title: 'Artilheiro', player: byGoals.isEmpty || byGoals.first.goals == 0 ? null : byGoals.first, value: (p) => '${p.goals} gols', icon: Icons.sports_soccer),
+            _InsightTile(title: 'Mais defesas', player: bySaves.isEmpty || bySaves.first.saves == 0 ? null : bySaves.first, value: (p) => '${p.saves} defesas', icon: Icons.shield_outlined),
+            _InsightTile(title: 'Mais vitórias', player: byWins.isEmpty || byWins.first.wins == 0 ? null : byWins.first, value: (p) => '${p.wins} vitórias', icon: Icons.emoji_events_outlined),
+            const SizedBox(height: 14),
+            const Text('Montagem equilibrada de times', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 5),
+            const Text('Distribuição automática por pontuação; não altera escalações nem grava partidas.', style: TextStyle(color: AppColors.muted, fontSize: 12)),
+            const SizedBox(height: 8),
+            _BalancedTeams(players: players),
+            const SizedBox(height: 16),
+            const Text('Critérios', style: TextStyle(fontWeight: FontWeight.w900)),
+            const Text('Os destaques usam apenas números retornados pela API. Empates são mantidos como destaques equivalentes na ordenação; nenhum dado é estimado.', style: TextStyle(color: AppColors.muted, fontSize: 12)),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+class _InsightTile extends StatelessWidget {
+  const _InsightTile({required this.title, required this.player, required this.value, required this.icon});
+  final String title;
+  final Player? player;
+  final String Function(Player) value;
+  final IconData icon;
+  @override
+  Widget build(BuildContext context) => Card(child: ListTile(
+    leading: Icon(icon, color: AppColors.redLight),
+    title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+    subtitle: Text(player == null ? 'Sem registros' : player!.name),
+    trailing: player == null ? null : Text(value(player!), style: const TextStyle(color: AppColors.redLight, fontWeight: FontWeight.w900)),
+  ));
+}
+
+class _BalancedTeams extends StatelessWidget {
+  const _BalancedTeams({required this.players});
+  final List<Player> players;
+  @override
+  Widget build(BuildContext context) {
+    final sorted = players.toList()..sort((a, b) => b.points.compareTo(a.points));
+    final first = <Player>[];
+    final second = <Player>[];
+    var firstTotal = 0;
+    var secondTotal = 0;
+    for (final player in sorted) {
+      if (firstTotal <= secondTotal) {
+        first.add(player);
+        firstTotal += player.points;
+      } else {
+        second.add(player);
+        secondTotal += player.points;
+      }
+    }
+    Widget team(String name, List<Player> team, int total) => Expanded(child: Card(
+      child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(name, style: const TextStyle(fontWeight: FontWeight.w900)),
+        Text('${team.length} atletas • $total pts', style: const TextStyle(color: AppColors.muted, fontSize: 11)),
+        const Divider(),
+        if (team.isEmpty) const Text('Sem jogadores', style: TextStyle(color: AppColors.muted))
+        else ...team.map((p) => Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis))),
+      ])),
+    ));
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      team('Time A', first, firstTotal),
+      const SizedBox(width: 8),
+      team('Time B', second, secondTotal),
+    ]);
+  }
 }
 
 class PlaceholderPage extends StatelessWidget {
