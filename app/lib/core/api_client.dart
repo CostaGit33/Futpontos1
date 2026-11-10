@@ -26,6 +26,12 @@ class ApiClient {
     return data;
   }
 
+  Future<Map<String, dynamic>> health() async {
+    final data = await get('/health');
+    if (data is Map) return Map<String, dynamic>.from(data);
+    throw const FormatException('Resposta inválida no diagnóstico da API.');
+  }
+
   Future<List<Map<String, dynamic>>> list(String path) async {
     final data = await get(path);
     if (data is! List) throw const FormatException('Formato inesperado da API.');
