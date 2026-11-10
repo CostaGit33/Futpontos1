@@ -46,8 +46,10 @@ const Map<String, List<int>> _manualAssessments = {
 };
 
 class PlayersPage extends StatefulWidget {
-  const PlayersPage({super.key, required this.loadPlayers});
+  const PlayersPage({super.key, required this.loadPlayers, required this.loadPlayerDetails, required this.loadAssessments});
   final Future<List<Player>> Function() loadPlayers;
+  final Future<Map<String, dynamic>> Function(int id) loadPlayerDetails;
+  final Future<List<Map<String, dynamic>>> Function() loadAssessments;
 
   @override
   State<PlayersPage> createState() => _PlayersPageState();
@@ -154,9 +156,58 @@ class _PlayersPageState extends State<PlayersPage> {
                       color: AppColors.redLight, fontWeight: FontWeight.w900, fontSize: 17)),
                     const Text('PTS', style: TextStyle(fontSize: 9, color: AppColors.muted)),
                   ]),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => PlayerProfilePage(player: entry.value)),
-                  ),
+                  onTap: () async {
+                    var selectedPlayer = entry.value;
+                    try {
+                      final raw = await widget.loadPlayerDetails(entry.value.id);
+                      final detail = raw['jogador'] is Map
+                          ? Map<String, dynamic>.from(raw['jogador'] as Map)
+                          : raw;
+                      selectedPlayer = Player.fromJson({
+                        'id': entry.value.id,
+                        'nome': entry.value.name,
+                        'foto': entry.value.photo,
+                        'pontos': entry.value.points,
+                        'vitorias': entry.value.wins,
+                        'gols': entry.value.goals,
+                        'defesa': entry.value.saves,
+                        'empate': entry.value.draws,
+                        'infracoes': entry.value.fouls,
+                        ...detail,
+                      });
+                    } catch (_) {
+                      // Mantém os dados da listagem se o endpoint individual falhar.
+                    }
+                    List<int>? assessment;
+                    try {
+                      final records = await widget.loadAssessments();
+                      for (final record in records) {
+                        if ('${record['id']}' != '${entry.value.id}') continue;
+                        final rawAssessment = record['avaliacao'] is Map
+                            ? Map<String, dynamic>.from(record['avaliacao'] as Map)
+                            : record;
+                        const keys = ['defesa', 'ataque', 'velocidade', 'habilidade', 'passe'];
+                        if (keys.every((key) => rawAssessment[key] != null)) {
+                          assessment = keys.map((key) =>
+                            int.tryParse('${rawAssessment[key]}') ?? 0).toList();
+                        }
+                        break;
+                      }
+                    } catch (_) {
+                      // A avaliação manual local continua disponível como contingência.
+                    }
+                    assessment ??= _manualAssessmentFor(entry.value.name);
+                    if (!context.mounted) return;
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => PlayerProfilePage(
+                        player: selectedPlayer,
+                        assessment: assessment,
+                        assessmentSource: assessment == null
+                            ? null
+                            : 'Avaliação individual • escala de 0 a 20',
+                      ),
+                    ));
+                  },
                 ),
               )),
           ],
@@ -167,12 +218,14 @@ class _PlayersPageState extends State<PlayersPage> {
 }
 
 class PlayerProfilePage extends StatelessWidget {
-  const PlayerProfilePage({super.key, required this.player});
+  const PlayerProfilePage({super.key, required this.player, this.assessment, this.assessmentSource});
   final Player player;
+  final List<int>? assessment;
+  final String? assessmentSource;
 
   @override
   Widget build(BuildContext context) {
-    final assessment = _manualAssessments[player.name];
+    final technicalAssessment = assessment;
     final achievements = achievementsFor(player);
     return Scaffold(
       appBar: AppBar(title: Text(player.name, maxLines: 1, overflow: TextOverflow.ellipsis)),
@@ -212,10 +265,10 @@ class PlayerProfilePage extends StatelessWidget {
           const Text('AVALIAÇÃO TÉCNICA DE CAMPO', style: TextStyle(
             color: AppColors.redLight, fontWeight: FontWeight.w900, letterSpacing: 1)),
           const SizedBox(height: 4),
-          const Text('Avaliação individual cadastrada manualmente • escala de 0 a 20',
+          Text(assessmentSource ?? 'Avaliação individual cadastrada manualmente • escala de 0 a 20',
             style: TextStyle(color: AppColors.muted, fontSize: 12)),
           const SizedBox(height: 10),
-          if (assessment == null)
+          if (technicalAssessment == null)
             const Card(child: Padding(padding: EdgeInsets.all(16),
               child: Text('Este jogador ainda não possui avaliação técnica manual cadastrada.')))
           else
@@ -224,13 +277,13 @@ class PlayerProfilePage extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   const Text('Média técnica', style: TextStyle(fontWeight: FontWeight.w800)),
-                  Text('${(assessment.reduce((a, b) => a + b) / assessment.length).toStringAsFixed(1)}/20',
+                  Text('${(technicalAssessment.reduce((a, b) => a + b) / technicalAssessment.length).toStringAsFixed(1)}/20',
                     style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.redLight)),
                 ]),
                 const SizedBox(height: 12),
                 ...List.generate(5, (i) => _AssessmentBar(
                   label: const ['Defesa', 'Ataque', 'Velocidade', 'Habilidade', 'Passe'][i],
-                  score: assessment[i])),
+                  score: technicalAssessment[i])),
               ]),
             )),
           const SizedBox(height: 20),
@@ -279,4 +332,18 @@ class _AssessmentBar extends StatelessWidget {
           minHeight: 8, backgroundColor: AppColors.raised)),
     ]),
   );
+}
+
+
+String _normalizePlayerName(String value) => value
+    .trim()
+    .toLowerCase()
+    .replaceAll(RegExp(r'\\s+'), ' ');
+
+List<int>? _manualAssessmentFor(String name) {
+  final normalized = _normalizePlayerName(name);
+  for (final entry in _manualAssessments.entries) {
+    if (_normalizePlayerName(entry.key) == normalized) return entry.value;
+  }
+  return null;
 }
