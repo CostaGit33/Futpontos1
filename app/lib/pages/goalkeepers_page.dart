@@ -13,6 +13,8 @@ class GoalkeepersPage extends StatefulWidget {
 
 class _GoalkeepersPageState extends State<GoalkeepersPage> {
   late Future<List<Goalkeeper>> _future;
+  String _query = '';
+  String _sort = 'Pontos';
 
   @override
   void initState() { super.initState(); _future = _load(); }
@@ -36,7 +38,15 @@ class _GoalkeepersPageState extends State<GoalkeepersPage> {
     builder: (context, snapshot) {
       if (snapshot.hasError) return _Error(message: snapshot.error.toString(), onRetry: _reload);
       if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-      final keepers = snapshot.data!;
+      final keepers = snapshot.data!.where((g) => g.name.toLowerCase().contains(_query.trim().toLowerCase())).toList();
+      int value(Goalkeeper g) => switch (_sort) {
+        'Gols' => g.goals,
+        'Defesas' => g.saves,
+        'Vitórias' => g.wins,
+        _ => g.points,
+      };
+      keepers.sort((a,b) => value(b).compareTo(value(a)));
+
       return RefreshIndicator(
         onRefresh: _reload,
         child: ListView(
@@ -47,7 +57,22 @@ class _GoalkeepersPageState extends State<GoalkeepersPage> {
             const SizedBox(height: 7),
             Text('Pódio exclusivo', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900)),
             const SizedBox(height: 5),
-            const Text('Estatísticas de goleiros separadas dos jogadores de linha.', style: TextStyle(color: AppColors.muted)),
+            TextField(
+              onChanged: (value) => setState(() => _query = value),
+              decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Buscar goleiro', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 10),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: ['Pontos', 'Gols', 'Defesas', 'Vitórias'].map((item) =>
+                Padding(padding: const EdgeInsets.only(right: 7), child: ChoiceChip(
+                  label: Text(item), selected: _sort == item,
+                  onSelected: (_) => setState(() => _sort = item),
+                ))).toList()),
+            ),
+            const SizedBox(height: 8),
+            Text('${keepers.length} goleiros', style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+            const SizedBox(height: 8),
             const SizedBox(height: 18),
             if (keepers.isEmpty)
               const Card(child: Padding(padding: EdgeInsets.all(22), child: Text('Nenhum goleiro cadastrado.')))
@@ -112,7 +137,7 @@ class _GoalkeeperTile extends StatelessWidget {
       onTap: onTap,
       leading: PlayerAvatar(photo: goalkeeper.photo, radius: 22, fallback: Text('$position', style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.gold))),
       title: Text(goalkeeper.name, style: const TextStyle(fontWeight: FontWeight.w800)),
-      subtitle: Text('${goalkeeper.matches} jogos • ${goalkeeper.saves} defesas • ${goalkeeper.goalsConceded} gols sofridos', style: const TextStyle(color: AppColors.muted, fontSize: 11)),
+      subtitle: Text('${goalkeeper.wins} vitórias • ${goalkeeper.goals} gols • ${goalkeeper.saves} defesas', style: const TextStyle(color: AppColors.muted, fontSize: 11)), 
       trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
         Text('${goalkeeper.points} pts', style: const TextStyle(color: AppColors.redLight, fontWeight: FontWeight.w900)),
         Text('${goalkeeper.winRate.toStringAsFixed(0)}% vitórias', style: const TextStyle(color: AppColors.muted, fontSize: 10)),
@@ -186,9 +211,12 @@ class _StatsGrid extends StatelessWidget {
   final Goalkeeper goalkeeper;
   @override
   Widget build(BuildContext context) => GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisSpacing: 9, mainAxisSpacing: 9, childAspectRatio: 2.15, children: [
-    _Stat(label: 'Jogos', value: '${goalkeeper.matches}'), _Stat(label: 'Vitórias', value: '${goalkeeper.wins}'),
+    _Stat(label: 'Pontos', value: '${goalkeeper.points}'), _Stat(label: 'Jogos', value: '${goalkeeper.matches}'),
+    _Stat(label: 'Vitórias', value: '${goalkeeper.wins}'), _Stat(label: 'Empates', value: '${goalkeeper.draws}'),
+    _Stat(label: 'Derrotas', value: '${goalkeeper.losses}'), _Stat(label: 'Gols', value: '${goalkeeper.goals}'),
     _Stat(label: 'Defesas', value: '${goalkeeper.saves}'), _Stat(label: 'Gols sofridos', value: '${goalkeeper.goalsConceded}'),
-    _Stat(label: 'Média sofrida', value: goalkeeper.concededAverage.toStringAsFixed(2)), _Stat(label: 'Aproveitamento', value: '${goalkeeper.winRate.toStringAsFixed(1)}%'),
+    _Stat(label: 'Infrações', value: '${goalkeeper.fouls}'), _Stat(label: 'Média sofrida', value: goalkeeper.concededAverage.toStringAsFixed(2)),
+    _Stat(label: 'Aproveitamento', value: '${goalkeeper.winRate.toStringAsFixed(1)}%'),
   ]);
 }
 
