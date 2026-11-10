@@ -271,7 +271,7 @@ class PlayerProfilePage extends StatelessWidget {
             color: AppColors.redLight, fontWeight: FontWeight.w900, letterSpacing: 1)),
           const SizedBox(height: 4),
           Text(assessmentSource ?? 'Avaliação individual cadastrada manualmente • escala de 0 a 20',
-            style: TextStyle(color: AppColors.muted, fontSize: 12)),
+            style: const TextStyle(color: AppColors.muted, fontSize: 12)),
           const SizedBox(height: 10),
           if (technicalAssessment == null)
             const Card(child: Padding(padding: EdgeInsets.all(16),
