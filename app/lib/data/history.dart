@@ -2,16 +2,7 @@ import '../core/api_client.dart';
 import 'player.dart';
 
 class Competition {
-  const Competition({
-    required this.id,
-    required this.key,
-    required this.name,
-    required this.status,
-    required this.playersCount,
-    this.openedAt,
-    this.closedAt,
-  });
-
+  const Competition({required this.id, required this.key, required this.name, required this.status, required this.playersCount, this.openedAt, this.closedAt});
   final int id;
   final String key;
   final String name;
@@ -19,7 +10,6 @@ class Competition {
   final int playersCount;
   final String? openedAt;
   final String? closedAt;
-
   bool get isOpen => status == 'aberta';
 
   factory Competition.fromJson(Map<String, dynamic> json) {
@@ -43,17 +33,27 @@ class SeasonData {
 }
 
 class HistoryCollection {
-  const HistoryCollection({
-    required this.seasons,
-    required this.failedCompetitions,
-  });
-
+  const HistoryCollection({required this.seasons, required this.failedCompetitions});
   final List<SeasonData> seasons;
   final List<Competition> failedCompetitions;
 
+  SeasonData? get currentSeason {
+    for (final season in seasons) {
+      if (season.competition.isOpen) return season;
+    }
+    return null;
+  }
+
+  Player? currentPlayer(int playerId) {
+    for (final player in currentSeason?.ranking ?? const <Player>[]) {
+      if (player.id == playerId) return player;
+    }
+    return null;
+  }
+
   List<Player> get careerPlayers {
     final totals = <int, _PlayerTotals>{};
-    for (final season in seasons.reversed) {
+    for (final season in seasons) {
       for (final player in season.ranking) {
         final total = totals.putIfAbsent(player.id, () => _PlayerTotals.fromPlayer(player));
         total.add(player);
@@ -70,70 +70,47 @@ class HistoryCollection {
     final result = <Player>[];
     for (final season in seasons.reversed) {
       for (final player in season.ranking) {
-        if (player.id == playerId) {
-          result.add(player);
-          break;
-        }
+        if (player.id == playerId) { result.add(player); break; }
       }
     }
     return result;
   }
 
   static Future<HistoryCollection> load(ApiClient api) async {
-    final rawCompetitions = await api.list('/competencias');
-    final competitions = rawCompetitions
-        .map(Competition.fromJson)
-        .where((c) => c.id > 0)
-        .toList()
+    final raw = await api.list('/competencias');
+    final competitions = raw.map(Competition.fromJson).where((c) => c.id > 0).toList()
       ..sort((a, b) => b.key.compareTo(a.key));
-
     final results = await Future.wait(competitions.map((competition) async {
       try {
-        final raw = await api.list('/competencias/' + competition.id.toString() + '/jogadores');
-        final players = raw.map(Player.fromJson).toList();
-        return SeasonData(competition: competition, ranking: players);
+        final ranking = await api.list('/competencias/' + competition.id.toString() + '/jogadores');
+        return SeasonData(competition: competition, ranking: ranking.map(Player.fromJson).toList());
       } catch (_) {
         return null;
       }
     }));
-
     final seasons = results.whereType<SeasonData>().toList()
       ..sort((a, b) => b.competition.key.compareTo(a.competition.key));
-    final loadedIds = seasons.map((s) => s.competition.id).toSet();
-    final failures = competitions.where((c) => !loadedIds.contains(c.id)).toList();
-    return HistoryCollection(seasons: seasons, failedCompetitions: failures);
+    final loaded = seasons.map((s) => s.competition.id).toSet();
+    return HistoryCollection(
+      seasons: seasons,
+      failedCompetitions: competitions.where((c) => !loaded.contains(c.id)).toList(),
+    );
   }
 }
 
 class _PlayerTotals {
-  _PlayerTotals(this.name, this.photo, this.points, this.wins, this.goals,
-      this.saves, this.draws, this.fouls);
-
-  factory _PlayerTotals.fromPlayer(Player p) => _PlayerTotals(
-        p.name, p.photo, 0, 0, 0, 0, 0, 0);
-
+  _PlayerTotals(this.name, this.photo) : points = 0, wins = 0, goals = 0, saves = 0, draws = 0, fouls = 0;
+  factory _PlayerTotals.fromPlayer(Player player) => _PlayerTotals(player.name, player.photo);
   String name;
   String? photo;
   int points, wins, goals, saves, draws, fouls;
-
-  void add(Player p) {
-    points += p.points;
-    wins += p.wins;
-    goals += p.goals;
-    saves += p.saves;
-    draws += p.draws;
-    fouls += p.fouls;
+  void add(Player player) {
+    points += player.points;
+    wins += player.wins;
+    goals += player.goals;
+    saves += player.saves;
+    draws += player.draws;
+    fouls += player.fouls;
   }
-
-  Player toPlayer(int id) => Player(
-        id: id,
-        name: name,
-        photo: photo,
-        points: points,
-        wins: wins,
-        goals: goals,
-        saves: saves,
-        draws: draws,
-        fouls: fouls,
-      );
+  Player toPlayer(int id) => Player(id: id, name: name, photo: photo, points: points, wins: wins, goals: goals, saves: saves, draws: draws, fouls: fouls);
 }
