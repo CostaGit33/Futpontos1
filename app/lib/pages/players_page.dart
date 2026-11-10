@@ -142,12 +142,10 @@ class _PlayersPageState extends State<PlayersPage> {
               ...players.asMap().entries.map((entry) => Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: AppColors.raised,
-                    backgroundImage: entry.value.photo == null || entry.value.photo!.isEmpty
-                      ? null : NetworkImage(entry.value.photo!),
-                    child: entry.value.photo == null || entry.value.photo!.isEmpty
-                      ? Text('${entry.key + 1}') : null,
+                  leading: PlayerAvatar(
+                    photo: entry.value.photo,
+                    radius: 20,
+                    fallback: Text('${entry.key + 1}'),
                   ),
                   title: Text(entry.value.name, style: const TextStyle(fontWeight: FontWeight.w800)),
                   subtitle: Text('${entry.value.wins} vitórias • ${entry.value.goals} gols • ${entry.value.saves} defesas'),
@@ -240,12 +238,11 @@ class PlayerProfilePage extends StatelessWidget {
           Card(child: Padding(
             padding: const EdgeInsets.all(18),
             child: Row(children: [
-              CircleAvatar(radius: 34,
-                backgroundColor: AppColors.raised,
-                backgroundImage: player.photo == null || player.photo!.isEmpty
-                  ? null : NetworkImage(player.photo!),
-                child: player.photo == null || player.photo!.isEmpty
-                  ? const Icon(Icons.person, size: 34) : null),
+              PlayerAvatar(
+                photo: player.photo,
+                radius: 34,
+                fallback: const Icon(Icons.person, size: 34),
+              ),
               const SizedBox(width: 14),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(player.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
