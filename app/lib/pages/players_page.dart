@@ -224,7 +224,7 @@ class PlayerProfilePage extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   const Text('Média técnica', style: TextStyle(fontWeight: FontWeight.w800)),
-                  Text((assessment.reduce((a, b) => a + b) / assessment.length).toStringAsFixed(1) + '/20',
+                  Text('${(assessment.reduce((a, b) => a + b) / assessment.length).toStringAsFixed(1)}/20',
                     style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.redLight)),
                 ]),
                 const SizedBox(height: 12),
