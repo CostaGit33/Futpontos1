@@ -140,8 +140,14 @@ class _GoalkeeperDetailPageState extends State<GoalkeeperDetailPage> {
       widget.api.list('/goleiros/${widget.goalkeeper.id}/evolucao'),
     ]);
     final detail = results[0] is Map ? Goalkeeper.fromJson(Map<String, dynamic>.from(results[0] as Map)) : widget.goalkeeper;
-    final matches = (results[1] as List).map(GoalkeeperMatch.fromJson).toList();
-    final evolution = (results[2] as List).map((item) => Map<String, dynamic>.from(item as Map)).toList();
+    final matches = (results[1] as List)
+        .whereType<Map>()
+        .map((item) => GoalkeeperMatch.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+    final evolution = (results[2] as List)
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
     return _GoalkeeperDetails(detail.id == 0 ? widget.goalkeeper : detail, matches, evolution);
   }
   @override
