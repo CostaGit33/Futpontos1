@@ -9,7 +9,7 @@ void main() {
   test('consulta o endpoint real de saúde e interpreta o estado do banco', () async {
     final client = MockClient((request) async {
       expect(request.method, 'GET');
-      expect(request.path, '/health');
+      expect(request.url.path, '/health');
       return http.Response(
         jsonEncode({'status': 'ok', 'api': 'online', 'database': 'online'}),
         200,
