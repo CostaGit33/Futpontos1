@@ -5,6 +5,7 @@ import 'package:futpontos1/core/api_client.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+// Keeps dependency resolution and request deduplication covered in CI.
 void main() {
   test('consulta o endpoint real de saúde e interpreta o estado do banco', () async {
     final client = MockClient((request) async {
