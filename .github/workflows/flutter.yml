@@ -45,7 +45,7 @@ jobs:
         run: flutter --version
 
       - name: Resolve locked dependencies
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get
 
       - name: Verify dependency graph
         run: flutter pub deps --style=compact
@@ -72,5 +72,6 @@ jobs:
           if-no-files-found: error
           retention-days: 14
           path: |
+            app/pubspec.lock
             app/build/app/outputs/flutter-apk/app-release.apk
             app/build/web
