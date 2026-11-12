@@ -60,21 +60,15 @@ class _AuthPageState extends State<AuthPage> {
     }
     setState(() { _busy = true; _error = null; _notice = null; _candidates = []; _selectedProfile = null; });
     try {
-      final players = await widget.api.list('/jogadores');
-      final goalkeepers = await widget.api.list('/goleiros');
+      final selectedType = _profileType;
+      if (selectedType == null) return;
+      final rows = await widget.api.list(selectedType == 'goleiro' ? '/goleiros' : '/jogadores');
       final found = <_Candidate>[];
-      for (final row in players) {
+      for (final row in rows) {
         final name = (row['nome'] ?? '').toString();
         final normalized = _normalize(name);
         if (normalized == query || normalized.startsWith(query) || normalized.contains(query) || query.contains(normalized)) {
-          found.add(_Candidate(type: 'jogador', player: Player.fromJson(row)));
-        }
-      }
-      for (final row in goalkeepers) {
-        final name = (row['nome'] ?? '').toString();
-        final normalized = _normalize(name);
-        if (normalized == query || normalized.startsWith(query) || normalized.contains(query) || query.contains(normalized)) {
-          found.add(_Candidate(type: 'goleiro', player: Player.fromJson(row)));
+          found.add(_Candidate(type: selectedType, player: Player.fromJson(row)));
         }
       }
       found.sort((a, b) {
@@ -85,6 +79,7 @@ class _AuthPageState extends State<AuthPage> {
       if (!mounted) return;
       setState(() {
         _candidates = found.take(12).toList();
+        if (found.isEmpty) _profileType = null;
         _notice = found.isEmpty
             ? 'Não encontramos um nome correspondente. Você pode criar a conta sem vincular um perfil.'
             : 'Encontramos possíveis correspondências. Confirme somente se o perfil for realmente seu.';
