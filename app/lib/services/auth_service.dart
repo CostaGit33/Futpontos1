@@ -9,10 +9,10 @@ class AuthService {
   static const _tokenKey = 'futpontos_access_token';
 
   Future<bool> restoreSession() async {
-    final token = await _storage.read(key: _tokenKey);
-    if (token == null || token.isEmpty) return false;
-    api.setBearerToken(token);
     try {
+      final token = await _storage.read(key: _tokenKey);
+      if (token == null || token.isEmpty) return false;
+      api.setBearerToken(token);
       await api.get('/auth/me');
       return true;
     } catch (_) {
