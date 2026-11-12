@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:futpontos1/core/api_client.dart';
 import 'package:futpontos1/pages/auth_page.dart';
@@ -6,10 +7,7 @@ void main() {
   testWidgets('exibe a tela de autenticação antes do aplicativo', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: AuthPage(
-          api: ApiClient(),
-          onAuthenticated: () {},
-        ),
+        home: AuthPage(api: ApiClient(), onAuthenticated: () {}),
       ),
     );
 
@@ -22,10 +20,7 @@ void main() {
   testWidgets('permite abrir o formulário de cadastro', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: AuthPage(
-          api: ApiClient(),
-          onAuthenticated: () {},
-        ),
+        home: AuthPage(api: ApiClient(), onAuthenticated: () {}),
       ),
     );
 
