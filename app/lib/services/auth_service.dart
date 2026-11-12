@@ -16,7 +16,6 @@ class AuthService {
       await api.get('/auth/me');
       return true;
     } catch (_) {
-      await _storage.delete(key: _tokenKey);
       api.setBearerToken(null);
       return false;
     }
