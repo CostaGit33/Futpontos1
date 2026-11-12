@@ -31,13 +31,13 @@ class AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<AuthGate> {
-  late final ApiClient api = widget.api;
+  final ApiClient api = ApiClient();
   late final AuthService auth = AuthService(api);
   late final Future<bool> restored = auth.restoreSession();
   bool? signedIn;
 
   Future<void> _logout() async {
-    await auth.logout();
+    try { await auth.logout(); } catch (_) {}
     if (mounted) setState(() => signedIn = false);
   }
 
@@ -71,7 +71,7 @@ class AppHome extends StatefulWidget {
 class _AppHomeState extends State<AppHome> {
   int selected = 0;
   int _refreshVersion = 0;
-  final api = ApiClient();
+  late final ApiClient api = widget.api;
 
   static const labels = ['Início', 'Classificação', 'Jogadores', 'Goleiros', 'Histórico', 'Mais'];
   static const icons = [
