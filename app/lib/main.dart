@@ -46,9 +46,11 @@ class _AuthGateState extends State<AuthGate> {
   @override
   Widget build(BuildContext context) {
     if (signedIn == true) return AppHome(api: api, onLogout: _logout);
-    if (signedIn == false) return AuthPage(api: api, onAuthenticated: () {
-      setState(() => signedIn = true);
-    });
+    if (signedIn == false) {
+      return AuthPage(api: api, onAuthenticated: () {
+        setState(() => signedIn = true);
+      });
+    }
     return FutureBuilder<bool>(
       future: restored,
       builder: (context, snapshot) {
