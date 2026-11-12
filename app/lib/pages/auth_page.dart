@@ -67,7 +67,7 @@ class _AuthPageState extends State<AuthPage> {
       for (final row in rows) {
         final name = (row['nome'] ?? '').toString();
         final normalized = _normalize(name);
-        if (normalized == query || normalized.startsWith(query) || normalized.contains(query) || query.contains(normalized)) {
+        if (normalized.length >= 3 && (normalized == query || normalized.startsWith(query) || normalized.contains(query) || query.contains(normalized))) {
           found.add(_Candidate(type: selectedType, player: Player.fromJson(row)));
         }
       }
