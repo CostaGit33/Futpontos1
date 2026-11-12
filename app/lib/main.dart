@@ -38,7 +38,9 @@ class _AuthGateState extends State<AuthGate> {
 
   Future<void> _logout() async {
     try { await auth.logout(); } catch (_) {}
-    if (mounted) setState(() => signedIn = false);
+    if (mounted) {
+      setState(() => signedIn = false);
+    }
   }
 
   @override
