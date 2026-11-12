@@ -7,6 +7,8 @@ import 'data/history.dart';
 import 'pages/history_page.dart';
 import 'pages/goalkeepers_page.dart';
 import 'pages/players_page.dart';
+import 'pages/auth_page.dart';
+import 'services/auth_service.dart';
 
 void main() => runApp(const FutPontosApp());
 
@@ -18,12 +20,50 @@ class FutPontosApp extends StatelessWidget {
     title: 'FutPontos',
     debugShowCheckedModeBanner: false,
     theme: buildAppTheme(),
-    home: const AppHome(),
+    home: const AuthGate(),
   );
 }
 
+class AuthGate extends StatefulWidget {
+  const AuthGate({super.key});
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  late final ApiClient api = widget.api;
+  late final AuthService auth = AuthService(api);
+  late final Future<bool> restored = auth.restoreSession();
+  bool? signedIn;
+
+  Future<void> _logout() async {
+    await auth.logout();
+    if (mounted) setState(() => signedIn = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (signedIn == true) return AppHome(api: api, onLogout: _logout);
+    if (signedIn == false) return AuthPage(api: api, onAuthenticated: () {
+      setState(() => signedIn = true);
+    });
+    return FutureBuilder<bool>(
+      future: restored,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && signedIn == null) setState(() => signedIn = snapshot.data);
+        });
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      },
+    );
+  }
+}
+
 class AppHome extends StatefulWidget {
-  const AppHome({super.key});
+  const AppHome({super.key, required this.api, required this.onLogout});
+  final ApiClient api;
+  final VoidCallback onLogout;
   @override
   State<AppHome> createState() => _AppHomeState();
 }
@@ -85,6 +125,11 @@ class _AppHomeState extends State<AppHome> {
           const Text('FUTPONTOS', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
         ]),
         actions: [
+          IconButton(
+            tooltip: 'Sair da conta',
+            onPressed: widget.onLogout,
+            icon: const Icon(Icons.logout_rounded),
+          ),
           IconButton(
             tooltip: 'Atualizar',
             onPressed: () => setState(() => _refreshVersion++),
