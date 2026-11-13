@@ -5,6 +5,7 @@ import '../core/api_client.dart';
 import '../core/app_theme.dart';
 import '../data/analytics.dart';
 import '../data/player.dart';
+import '../widgets/sports_banner.dart';
 
 /// Avaliação técnica manual realizada em campo. Escala original: 0 a 20.
 /// A associação é pelo nome exato, como no cadastro manual do PWA.
@@ -118,12 +119,12 @@ class _PlayersPageState extends State<PlayersPage> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
           children: [
-            Text('PLANTEL', style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.redLight, letterSpacing: 2, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 6),
-            Text('Jogadores', style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w900)),
-            const SizedBox(height: 12),
+            const SportsBanner(
+              title: 'Jogadores',
+              subtitle: 'Destaques, desempenho e evolução em campo',
+              icon: Icons.sports_soccer_rounded,
+              tag: 'PLANTEL • FUTPONTOS',
+            ),
             TextField(
               onChanged: (value) => setState(() => _query = value),
               decoration: const InputDecoration(
