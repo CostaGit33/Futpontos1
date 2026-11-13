@@ -127,6 +127,26 @@ class ApiClient {
     return Map<String, dynamic>.from(data);
   }
 
+  Future<Map<String, dynamic>> requestPasswordReset(String email) async {
+    final data = await post('/auth/password-reset/request', {'email': email.trim()});
+    if (data is! Map) throw const FormatException('Resposta inválida ao solicitar recuperação.');
+    return Map<String, dynamic>.from(data);
+  }
+
+  Future<Map<String, dynamic>> confirmPasswordReset({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    final data = await post('/auth/password-reset/confirm', {
+      'email': email.trim(),
+      'codigo': code.trim(),
+      'nova_senha': newPassword,
+    });
+    if (data is! Map) throw const FormatException('Resposta inválida ao redefinir a senha.');
+    return Map<String, dynamic>.from(data);
+  }
+
   Future<Map<String, dynamic>> authMe(String token) async {
     final response = await _client.get(
       Uri.parse('$baseUrl/auth/me'),
