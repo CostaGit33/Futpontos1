@@ -644,7 +644,7 @@ class _InsightsPageState extends State<InsightsPage> {
                 subtitle: const Text('Contas, atletas, vínculos, permissões e auditoria'),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => AdminPage(api: api)),
+                  MaterialPageRoute<void>(builder: (_) => AdminPage(api: widget.api)),
                 ),
               ),
             ),
