@@ -505,8 +505,8 @@ class _FootballHero extends StatelessWidget {
         child: Icon(Icons.sports_soccer_rounded, size: 112,
           color: Colors.white.withValues(alpha: .10)),
       ),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(18, 17, 112, 17),
+      const Padding(
+        padding: EdgeInsets.fromLTRB(18, 17, 112, 17),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center, children: const [
           Row(mainAxisSize: MainAxisSize.min, children: [
@@ -571,7 +571,7 @@ class _Metric extends StatelessWidget {
             ),
             child: Icon(icon, color: AppColors.redLight, size: 19),
           ),
-          Icon(Icons.arrow_outward_rounded, size: 14, color: AppColors.muted),
+          const Icon(Icons.arrow_outward_rounded, size: 14, color: AppColors.muted),
         ]),
         if (int.tryParse(value) case final number?)
           TweenAnimationBuilder<double>(
