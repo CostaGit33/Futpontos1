@@ -336,6 +336,7 @@ class _ProfilePhotoEditorState extends State<_ProfilePhotoEditor> {
 
   Future<String?> _loginIfNeeded() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return null;
     var token = prefs.getString('futpontos_auth_token');
     if (token == null || token.isEmpty) {
       final emailController = TextEditingController();
