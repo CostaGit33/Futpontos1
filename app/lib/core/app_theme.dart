@@ -2,15 +2,15 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 abstract final class AppColors {
-  static const background = Color(0xFF080A0F);
-  static const surface = Color(0xFF121720);
-  static const raised = Color(0xFF1A2230);
-  static const blue = Color(0xFF0041A8);
-  static const red = Color(0xFFD62828);
-  static const redLight = Color(0xFFEF4444);
-  static const gold = Color(0xFFFFCC00);
-  static const muted = Color(0xFF9299A7);
-  static const border = Color(0xFF273142);
+  static const background = Color(0xFF0B0D10);
+  static const surface = Color(0xFF14171C);
+  static const raised = Color(0xFF20252C);
+  static const blue = Color(0xFF263746);
+  static const red = Color(0xFFB8202E);
+  static const redLight = Color(0xFFE04450);
+  static const gold = Color(0xFFE6B84A);
+  static const muted = Color(0xFF9BA2AC);
+  static const border = Color(0xFF2B313A);
 }
 
 ThemeData buildAppTheme() {
@@ -44,7 +44,7 @@ ThemeData buildAppTheme() {
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: AppColors.surface,
-      indicatorColor: AppColors.red.withValues(alpha: .18),
+      indicatorColor: AppColors.red.withValues(alpha: .22),
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
     ),
   );
