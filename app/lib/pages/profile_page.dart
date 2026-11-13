@@ -103,10 +103,28 @@ class _ProfilePageState extends State<ProfilePage> {
       final result = link['profile_type'] == 'goleiro'
           ? await widget.api.uploadGoalkeeperPhoto(goalkeeperId: id, bytes: bytes, filename: image.name, token: token)
           : await widget.api.uploadPlayerPhoto(playerId: id, bytes: bytes, filename: image.name, token: token);
+      if (result['success'] != true) {
+        throw Exception('A API não confirmou a gravação da foto.');
+      }
+      final returnedPhoto = resolvePlayerPhoto(result['foto']);
+      if (returnedPhoto == null) {
+        throw Exception('A API recebeu a imagem, mas não retornou uma URL válida para exibição.');
+      }
+
+      // Reconsulta o perfil no servidor: só confirma sucesso se a foto estiver
+      // persistida e presente na resposta atualizada, evitando falso positivo.
+      final refreshed = await _refresh();
+      final persistedPhoto = link['profile_type'] == 'goleiro'
+          ? (refreshed['goalkeeper'] as Goalkeeper?)?.photo
+          : (refreshed['player'] as Player?)?.photo;
+      final confirmedPhoto = resolvePlayerPhoto(persistedPhoto);
+      if (confirmedPhoto == null) {
+        throw Exception('O envio foi aceito, mas a foto nova ainda não aparece no perfil. Tente atualizar novamente.');
+      }
       if (!mounted) return;
-      setState(() => _photoOverride = resolvePlayerPhoto(result['foto']));
+      setState(() => _photoOverride = confirmedPhoto);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Foto de perfil atualizada.')),
+        const SnackBar(content: Text('Foto salva e confirmada no perfil.')),
       );
     } catch (error) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
