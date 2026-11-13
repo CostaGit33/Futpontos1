@@ -6,6 +6,14 @@ class ApiClient {
 
   final http.Client _client;
   final Map<String, Future<dynamic>> _pendingGets = {};
+  String? _bearerToken;
+
+  void setBearerToken(String? token) => _bearerToken = token;
+
+  Map<String, String> get _headers => {
+    'Accept': 'application/json',
+    if (_bearerToken != null) 'Authorization': 'Bearer $_bearerToken',
+  };
 
   static const baseUrl = 'https://api.semdominio.online';
 
@@ -30,7 +38,7 @@ class ApiClient {
   Future<dynamic> _fetch(String path) async {
     final response = await _client.get(
       Uri.parse('$baseUrl$path'),
-      headers: const {'Accept': 'application/json'},
+      headers: _headers,
     ).timeout(const Duration(seconds: 15));
 
     dynamic data;
@@ -49,6 +57,20 @@ class ApiClient {
     return data;
   }
 
+
+
+  Future<dynamic> post(String path, Map<String, dynamic> body) async {
+    final response = await _client.post(
+      Uri.parse('$baseUrl$path'),
+      headers: {..._headers, 'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    ).timeout(const Duration(seconds: 20));
+    final data = _decodeResponse(response);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(_errorMessage(data));
+    }
+    return data;
+  }
 
   Future<Map<String, dynamic>> login({
     required String email,
