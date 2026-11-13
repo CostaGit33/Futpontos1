@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../core/app_theme.dart';
 
 class RegulationPage extends StatelessWidget {
@@ -193,21 +194,13 @@ class RegulationPage extends StatelessWidget {
   }
 
   static Future<void> _openUrl(BuildContext context, String url) async {
-    // Launches links without adding a new dependency.
-    // The URL remains visible in the regulation if no external handler is available.
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Abrir link'),
-        content: SelectableText(url),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Fechar'),
-          ),
-        ],
-      ),
-    );
+    final uri = Uri.parse(url);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível abrir o link.')),
+      );
+    }
   }
 }
 
