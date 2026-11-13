@@ -258,25 +258,7 @@ class _DashboardPageState extends State<DashboardPage> {
           children: [
             const _Intro(),
             const SizedBox(height: 22),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.blue, Color(0xFF151B29), AppColors.red],
-                  begin: Alignment.topLeft, end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Row(children: [
-                Icon(Icons.emoji_events_outlined, size: 36),
-                SizedBox(width: 14),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('FUTPONTOS • TEMPORADA', style: TextStyle(fontSize: 10, letterSpacing: 1.3, fontWeight: FontWeight.w800)),
-                  SizedBox(height: 5),
-                  Text('O desempenho em campo, em números.', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                ])),
-              ]),
-            ),
+            const _FootballHero(),
             const SizedBox(height: 14),
             LayoutBuilder(builder: (context, box) {
               final count = box.maxWidth > 620 ? 4 : 2;
@@ -481,13 +463,92 @@ class _EntranceState extends State<_Entrance> with SingleTickerProviderStateMixi
 class _Intro extends StatelessWidget {
   const _Intro();
   @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    Text('PAINEL DO FUTEBOL', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.redLight, letterSpacing: 2, fontWeight: FontWeight.w900)),
-    const SizedBox(height: 7),
-    Text('Acompanhe o jogo.', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900)),
-    const SizedBox(height: 5),
-    const Text('Estatísticas, evolução e classificação em um só lugar.', style: TextStyle(color: AppColors.muted)),
+  Widget build(BuildContext context) => Row(children: [
+    Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: AppColors.raised,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: const Icon(Icons.sports_soccer_rounded, color: AppColors.redLight, size: 24),
+    ),
+    const SizedBox(width: 12),
+    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('FUTEBOL DE VÁRZEA', style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: AppColors.muted, letterSpacing: 1.5, fontWeight: FontWeight.w800)),
+      Text('Painel da temporada', style: Theme.of(context).textTheme.titleLarge?.copyWith(
+        fontWeight: FontWeight.w900)),
+    ])),
   ]);
+}
+
+class _FootballHero extends StatelessWidget {
+  const _FootballHero();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 154,
+    clipBehavior: Clip.antiAlias,
+    decoration: BoxDecoration(
+      color: const Color(0xFF171D24),
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: AppColors.border),
+    ),
+    child: Stack(children: [
+      Positioned.fill(child: CustomPaint(painter: _PitchPainter())),
+      Positioned(
+        right: 18,
+        top: 12,
+        bottom: 12,
+        child: Icon(Icons.sports_soccer_rounded, size: 112,
+          color: Colors.white.withValues(alpha: .10)),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(18, 17, 112, 17),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center, children: const [
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.circle, size: 7, color: AppColors.redLight),
+            SizedBox(width: 7),
+            Text('TEMPORADA EM JOGO', style: TextStyle(
+              color: AppColors.muted, fontSize: 10, letterSpacing: 1.6,
+              fontWeight: FontWeight.w900)),
+          ]),
+          SizedBox(height: 10),
+          Text('Cada jogo\nconta uma história.',
+            style: TextStyle(fontSize: 21, height: 1.08,
+              fontWeight: FontWeight.w900, color: Colors.white)),
+        ]),
+      ),
+      Positioned(left: 0, bottom: 0, child: Container(
+        width: 54, height: 4, color: AppColors.red)),
+    ]),
+  );
+}
+
+class _PitchPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final line = Paint()
+      ..color = Colors.white.withValues(alpha: .075)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    final field = Rect.fromLTWH(size.width * .48, 12,
+      size.width * .48, size.height - 24);
+    canvas.drawRect(field, line);
+    canvas.drawLine(Offset(field.center.dx, field.top),
+      Offset(field.center.dx, field.bottom), line);
+    canvas.drawCircle(field.center, 25, line);
+    canvas.drawRect(Rect.fromLTWH(field.left, field.top + 34, 25,
+      field.height - 68), line);
+    canvas.drawRect(Rect.fromLTWH(field.right - 25, field.top + 34, 25,
+      field.height - 68), line);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PitchPainter oldDelegate) => false;
 }
 
 class _Metric extends StatelessWidget {
@@ -495,36 +556,47 @@ class _Metric extends StatelessWidget {
   final String label, value;
   final IconData icon;
   @override
-  Widget build(BuildContext context) => Card(child: Padding(
-    padding: const EdgeInsets.all(13),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      Icon(icon, color: AppColors.redLight, size: 20),
-      if (int.tryParse(value) case final number?)
-        TweenAnimationBuilder<double>(
-          tween: Tween<double>(begin: 0, end: number.toDouble()),
-          duration: const Duration(milliseconds: 850),
-          curve: Curves.easeOutCubic,
-          builder: (context, animated, _) => Text(
-            animated.round().toString(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+  Widget build(BuildContext context) => Card(
+    margin: EdgeInsets.zero,
+    child: Padding(
+      padding: const EdgeInsets.all(13),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Container(
+            width: 34, height: 34,
+            decoration: BoxDecoration(
+              color: AppColors.raised,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(icon, color: AppColors.redLight, size: 19),
           ),
-        )
-      else
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
-          child: Text(
-            value,
-            key: ValueKey(value),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+          Icon(Icons.arrow_outward_rounded, size: 14, color: AppColors.muted),
+        ]),
+        if (int.tryParse(value) case final number?)
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: number.toDouble()),
+            duration: const Duration(milliseconds: 850),
+            curve: Curves.easeOutCubic,
+            builder: (context, animated, _) => Text(
+              animated.round().toString(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+            ),
+          )
+        else
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: Text(value, key: ValueKey(value), maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
           ),
-        ),
-      Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.muted, fontSize: 11)),
-    ]),
-  ));
+        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: AppColors.muted, fontSize: 10)),
+      ]),
+    ),
+  );
 }
 
 class _PlayerTile extends StatelessWidget {
