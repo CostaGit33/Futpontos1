@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/api_client.dart';
 import '../core/app_theme.dart';
@@ -17,6 +18,9 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   late Future<Map<String, dynamic>> future;
+  final ImagePicker _picker = ImagePicker();
+  bool _photoBusy = false;
+  String? _photoOverride;
   @override
   void initState() { super.initState(); future = _load(); }
 
@@ -68,7 +72,50 @@ class _ProfilePageState extends State<ProfilePage> {
     return result;
   }
 
-  Future<void> _refresh() async { final f = _load(); setState(() => future = f); await f; }
+  Future<void> _refresh() async {
+    final f = _load();
+    setState(() { future = f; _photoOverride = null; });
+    await f;
+  }
+
+  Future<void> _changePhoto(Map<String, dynamic> link) async {
+    if (_photoBusy || link['status'] != 'approved') return;
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(child: Wrap(children: [
+        ListTile(leading: const Icon(Icons.photo_library_outlined), title: const Text('Galeria'),
+          onTap: () => Navigator.pop(context, ImageSource.gallery)),
+        ListTile(leading: const Icon(Icons.photo_camera_outlined), title: const Text('Câmera'),
+          onTap: () => Navigator.pop(context, ImageSource.camera)),
+      ])),
+    );
+    if (source == null || !mounted) return;
+    try {
+      final image = await _picker.pickImage(source: source, imageQuality: 85, maxWidth: 1400);
+      if (image == null) return;
+      final bytes = await image.readAsBytes();
+      if (bytes.length > 5 * 1024 * 1024) throw Exception('A imagem deve ter no máximo 5 MB.');
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('futpontos_auth_token');
+      if (token == null || token.isEmpty) throw Exception('Sessão expirada. Entre novamente.');
+      setState(() => _photoBusy = true);
+      final id = int.tryParse(link['profile_id'].toString()) ?? 0;
+      final result = link['profile_type'] == 'goleiro'
+          ? await widget.api.uploadGoalkeeperPhoto(goalkeeperId: id, bytes: bytes, filename: image.name, token: token)
+          : await widget.api.uploadPlayerPhoto(playerId: id, bytes: bytes, filename: image.name, token: token);
+      if (!mounted) return;
+      setState(() => _photoOverride = resolvePlayerPhoto(result['foto']));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Foto de perfil atualizada.')),
+      );
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _photoBusy = false);
+    }
+  }
 
   Future<void> _editAccount(Map<String, dynamic> user) async {
     final name = TextEditingController(text: user['nome']?.toString() ?? '');
@@ -160,8 +207,19 @@ class _ProfilePageState extends State<ProfilePage> {
         final link = d['link'] as Map<String, dynamic>?;
         return RefreshIndicator(onRefresh: _refresh, child: ListView(padding: const EdgeInsets.all(16), children: [
           Card(child: ListTile(
-            leading: PlayerAvatar(photo: p?.photo ?? g?.photo, radius: 30,
-              fallback: const Icon(Icons.person_outline, size: 30)),
+            leading: Stack(clipBehavior: Clip.none, children: [
+              PlayerAvatar(photo: _photoOverride ?? p?.photo ?? g?.photo, radius: 30,
+                fallback: const Icon(Icons.person_outline, size: 30)),
+              if (link?['status'] == 'approved')
+                Positioned(right: -8, bottom: -8, child: _photoBusy
+                  ? const SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 2))
+                  : IconButton.filled(
+                      visualDensity: VisualDensity.compact,
+                      tooltip: 'Alterar foto',
+                      onPressed: () => _changePhoto(link!),
+                      icon: const Icon(Icons.camera_alt_outlined, size: 15),
+                    )),
+            ]),
             title: Text(user['nome']?.toString() ?? 'Minha conta', style: const TextStyle(fontWeight: FontWeight.w900)),
             subtitle: Text(user['email']?.toString() ?? '—'),
             trailing: Text(p != null ? 'JOGADOR' : g != null ? 'GOLEIRO' : 'CONTA',
