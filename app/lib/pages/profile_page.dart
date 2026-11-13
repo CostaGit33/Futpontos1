@@ -7,6 +7,7 @@ import '../core/app_theme.dart';
 import '../data/goalkeeper.dart';
 import '../data/history.dart';
 import '../data/player.dart';
+import '../widgets/sports_banner.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, required this.api, required this.onLogout});
@@ -226,6 +227,15 @@ class _ProfilePageState extends State<ProfilePage> {
         final g = d['goalkeeper'] as Goalkeeper?;
         final link = d['link'] as Map<String, dynamic>?;
         return RefreshIndicator(onRefresh: _refresh, child: ListView(padding: const EdgeInsets.all(16), children: [
+          SportsBanner(
+            title: p != null ? 'Perfil de jogador' : g != null ? 'Perfil de goleiro' : 'Minha conta',
+            subtitle: p != null || g != null
+                ? 'Sua trajetória e seus números em campo'
+                : 'Conta, segurança e vínculo esportivo',
+            icon: p != null ? Icons.sports_soccer_rounded
+                : g != null ? Icons.sports_handball_rounded : Icons.person_rounded,
+            tag: 'ÁREA DO ATLETA',
+          ),
           Card(child: ListTile(
             leading: Stack(clipBehavior: Clip.none, children: [
               PlayerAvatar(photo: _photoOverride ?? p?.photo ?? g?.photo, radius: 30,
