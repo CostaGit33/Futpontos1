@@ -108,6 +108,123 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 
+  Future<void> _recoverPassword() async {
+    final emailController = TextEditingController(text: _email.text.trim());
+    final codeController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    var codeSent = false;
+    var busy = false;
+    String? error;
+    String? notice;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text(codeSent ? 'Criar nova senha' : 'Recuperar senha'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (!codeSent) ...[
+                  const Text('Informe o e-mail da sua conta. Enviaremos um código de 6 números, válido por 15 minutos.'),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    autocorrect: false,
+                    decoration: const InputDecoration(labelText: 'E-mail cadastrado'),
+                  ),
+                ] else ...[
+                  const Text('Digite o código recebido por e-mail e escolha uma nova senha.'),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: codeController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    decoration: const InputDecoration(labelText: 'Código de 6 números'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: newPasswordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(labelText: 'Nova senha'),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text('Use de 10 a 128 caracteres.', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                  TextButton(
+                    onPressed: busy ? null : () => setDialogState(() {
+                      codeSent = false;
+                      codeController.clear();
+                      newPasswordController.clear();
+                      error = null;
+                    }),
+                    child: const Text('Solicitar outro código'),
+                  ),
+                ],
+                if (notice != null) ...[
+                  const SizedBox(height: 8),
+                  Text(notice!, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+                ],
+                if (error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(error!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: busy ? null : () => Navigator.of(dialogContext).pop(),
+              child: const Text('Fechar'),
+            ),
+            FilledButton(
+              onPressed: busy ? null : () async {
+                setDialogState(() { busy = true; error = null; notice = null; });
+                try {
+                  if (!codeSent) {
+                    await widget.api.requestPasswordReset(emailController.text);
+                    setDialogState(() {
+                      codeSent = true;
+                      notice = 'Se houver uma conta ativa com esse e-mail, enviaremos o código. Aguarde até 60 segundos antes de solicitar outro.';
+                    });
+                  } else {
+                    await widget.api.confirmPasswordReset(
+                      email: emailController.text,
+                      code: codeController.text,
+                      newPassword: newPasswordController.text,
+                    );
+                    if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                    if (mounted) {
+                      _email.text = emailController.text.trim();
+                      _password.clear();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Senha redefinida. Entre com sua nova senha.')),
+                      );
+                    }
+                  }
+                } catch (e) {
+                  setDialogState(() => error = e.toString().replaceFirst('Exception: ', ''));
+                } finally {
+                  if (dialogContext.mounted) setDialogState(() => busy = false);
+                }
+              },
+              child: busy
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text(codeSent ? 'Redefinir senha' : 'Enviar código'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    emailController.dispose();
+    codeController.dispose();
+    newPasswordController.dispose();
+  }
+
   Future<void> _submit() async {
     setState(() { _busy = true; _error = null; _notice = null; });
     try {
@@ -164,6 +281,14 @@ class _AuthPageState extends State<AuthPage> {
                       Text(_register ? 'Crie sua conta no aplicativo' : 'Entre para acessar o aplicativo',
                         textAlign: TextAlign.center, style: const TextStyle(color: AppColors.muted)),
                       const SizedBox(height: 24),
+                      if (!_register)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _busy ? null : _recoverPassword,
+                            child: const Text('Esqueci minha senha'),
+                          ),
+                        ),
                       if (_register) ...[
                         TextField(controller: _name, textCapitalization: TextCapitalization.words,
                           decoration: const InputDecoration(labelText: 'Nome completo', prefixIcon: Icon(Icons.person_outline))),
