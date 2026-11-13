@@ -3,7 +3,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/api_client.dart';
 import '../core/app_theme.dart';
-import '../core/analytics.dart';
 import '../data/goalkeeper.dart';
 import '../data/history.dart';
 import '../data/player.dart';
@@ -291,8 +290,6 @@ class _PlayerData extends StatelessWidget {
     const _Heading('Avaliação técnica • 0 a 20'),
     _Assessment(values: assessment),
     const SizedBox(height: 14),
-    const _Heading('Conquistas'),
-    _Awards(items: achievementsFor(player).map((a) => (a.icon, a.title, a.description, a.progress, a.target, a.unlocked)).toList()),
   ]);
 }
 
@@ -304,12 +301,6 @@ class _GoalkeeperData extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final g = goalkeeper;
-    final awards = <(String, String, String, int, int, bool)>[
-      ('🧤', 'Primeira muralha', '10 defesas', g.saves, 10, g.saves >= 10),
-      ('🧱', 'Paredão', '25 defesas', g.saves, 25, g.saves >= 25),
-      ('🏆', 'Vitórias', '5 vitórias', g.wins, 5, g.wins >= 5),
-      ('⭐', 'Experiente', '10 partidas', g.matches, 10, g.matches >= 10),
-    ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const _Heading('Desempenho atual'),
       _Stats(items: [('Pontos', g.points), ('Jogos', g.matches), ('Vitórias', g.wins),
@@ -326,8 +317,6 @@ class _GoalkeeperData extends StatelessWidget {
       const _Heading('Avaliação técnica • 0 a 20'),
       _Assessment(values: g.assessment),
       const SizedBox(height: 14),
-      const _Heading('Conquistas'),
-      _Awards(items: awards),
       const SizedBox(height: 14),
       const _Heading('Partidas recentes'),
       if (matches.isEmpty) const Card(child: Padding(padding: EdgeInsets.all(14), child: Text('Nenhuma partida registrada.')))
@@ -394,20 +383,5 @@ class _Assessment extends StatelessWidget {
         LinearProgressIndicator(value: (values![i] / 20).clamp(0.0, 1.0)),
       ])),
     ])));
-  }
-}
-
-class _Awards extends StatelessWidget {
-  const _Awards({required this.items});
-  final List<(String, String, String, int, int, bool)> items;
-  @override
-  Widget build(BuildContext context) {
-    final count = items.where((e) => e.$6).length;
-    return Card(child: Column(children: [
-      ListTile(title: const Text('Conquistas desbloqueadas'), trailing: Text(count.toString() + '/' + items.length.toString())),
-      ...items.map((e) => ListTile(dense: true, leading: Text(e.$1, style: const TextStyle(fontSize: 20)),
-        title: Text(e.$2), subtitle: Text(e.$3 + ' • ' + e.$4.toString() + '/' + e.$5.toString()),
-        trailing: Icon(e.$6 ? Icons.check_circle : Icons.lock_outline, color: e.$6 ? AppColors.gold : AppColors.muted))),
-    ]));
   }
 }
