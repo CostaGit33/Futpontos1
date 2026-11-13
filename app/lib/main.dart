@@ -57,6 +57,7 @@ class _AppHomeState extends State<AppHome> {
       RankingPage(key: ValueKey('ranking-$_refreshVersion'), api: api),
       PlayersPage(
         key: ValueKey('players-$_refreshVersion'),
+        api: api,
         loadPlayers: () async => (await api.list('/jogadores')).map((e) => Player.fromJson(e)).toList(),
         loadPlayerDetails: (id) async {
           final data = await api.get('/jogadores/$id');
