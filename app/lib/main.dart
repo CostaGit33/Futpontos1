@@ -9,6 +9,7 @@ import 'pages/goalkeepers_page.dart';
 import 'pages/players_page.dart';
 import 'pages/auth_page.dart';
 import 'pages/regulation_page.dart';
+import 'pages/profile_page.dart';
 import 'services/auth_service.dart';
 
 void main() => runApp(const FutPontosApp());
@@ -134,6 +135,19 @@ class _AppHomeState extends State<AppHome> {
           const Text('FUTPONTOS', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
         ]),
         actions: [
+          IconButton(
+            tooltip: 'Meu perfil',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => ProfilePage(
+                api: api,
+                onLogout: () {
+                  Navigator.of(context).pop();
+                  widget.onLogout();
+                },
+              ),
+            )),
+            icon: const Icon(Icons.account_circle_outlined),
+          ),
           IconButton(
             tooltip: 'Sair da conta',
             onPressed: widget.onLogout,
