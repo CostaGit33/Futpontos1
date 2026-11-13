@@ -113,7 +113,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
       // Reconsulta o perfil no servidor: só confirma sucesso se a foto estiver
       // persistida e presente na resposta atualizada, evitando falso positivo.
-      final refreshed = await _refresh();
+      final refreshed = await _load();
+      if (!mounted) return;
+      setState(() => future = Future<Map<String, dynamic>>.value(refreshed));
       final persistedPhoto = link['profile_type'] == 'goleiro'
           ? (refreshed['goalkeeper'] as Goalkeeper?)?.photo
           : (refreshed['player'] as Player?)?.photo;
