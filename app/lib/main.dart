@@ -8,6 +8,7 @@ import 'pages/history_page.dart';
 import 'pages/goalkeepers_page.dart';
 import 'pages/players_page.dart';
 import 'pages/auth_page.dart';
+import 'pages/admin_page.dart';
 import 'pages/regulation_page.dart';
 import 'pages/profile_page.dart';
 import 'services/auth_service.dart';
@@ -630,6 +631,20 @@ class _InsightsPageState extends State<InsightsPage> {
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(builder: (_) => const RegulationPage()),
+                ),
+              ),
+            ),
+            Card(
+              child: ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0x33D9A441),
+                  child: Icon(Icons.admin_panel_settings_outlined, color: AppColors.gold),
+                ),
+                title: const Text('Administração FutPontos', style: TextStyle(fontWeight: FontWeight.w900)),
+                subtitle: const Text('Contas, atletas, vínculos, permissões e auditoria'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => AdminPage(api: api)),
                 ),
               ),
             ),
