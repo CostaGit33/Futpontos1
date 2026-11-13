@@ -4,6 +4,7 @@ import '../core/api_client.dart';
 import '../core/app_theme.dart';
 import '../data/goalkeeper.dart';
 import '../data/player.dart';
+import '../widgets/sports_banner.dart';
 
 class GoalkeepersPage extends StatefulWidget {
   const GoalkeepersPage({super.key, required this.api});
@@ -63,10 +64,12 @@ class _GoalkeepersPageState extends State<GoalkeepersPage> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(18, 14, 18, 32),
           children: [
-            Text('MURAL DOS GOLEIROS', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.redLight, letterSpacing: 2, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 7),
-            Text('Pódio exclusivo', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900)),
-            const SizedBox(height: 5),
+            const SportsBanner(
+              title: 'Mural dos goleiros',
+              subtitle: 'Defesas, regularidade e destaque no gol',
+              icon: Icons.sports_handball_rounded,
+              tag: 'PAREDÃO • FUTPONTOS',
+            ),
             TextField(
               onChanged: (value) => setState(() => _query = value),
               decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Buscar goleiro', border: OutlineInputBorder()),
