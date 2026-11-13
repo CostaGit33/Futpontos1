@@ -247,7 +247,12 @@ class _AuthPageState extends State<AuthPage> {
         if (mounted) widget.onAuthenticated();
       }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      final message = e.toString().replaceFirst('Exception: ', '');
+      if (mounted) {
+        setState(() => _error = message == 'E-mail ou senha incorretos.'
+            ? 'E-mail ou senha não conferem. Confira os dados ou use “Esqueci minha senha” para criar uma nova.'
+            : message);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
