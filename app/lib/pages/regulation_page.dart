@@ -24,7 +24,7 @@ class RegulationPage extends StatelessWidget {
       '3.4. Todos devem se organizar para chegar com antecedência, evitando atrasos e prejudicando o andamento do Baba.',
     ]),
     _RegulationSection('4. FALTAS E PENALIDADES', [
-      '4.1. O jogador que colocar seu nome na lista e não comparecer ao Baba, sem retirar sua inscrição até o prazo estabelecido, estará sujeito a uma multa de R$ 10,00.',
+      '4.1. O jogador que colocar seu nome na lista e não comparecer ao Baba, sem retirar sua inscrição até o prazo estabelecido, estará sujeito a uma multa de R\$ 10,00.',
       '4.2. A multa deverá ser paga antes da participação no próximo Baba.',
       '4.3. Cada jogador deverá participar de pelo menos um Baba por mês.',
       '4.4. O jogador que não participar de nenhum encontro durante o mês será removido automaticamente da lista de participantes.',
@@ -46,9 +46,9 @@ class RegulationPage extends StatelessWidget {
     _RegulationSection('7. PAGAMENTOS E CONTRIBUIÇÕES', [
       '7.1. Os pagamentos deverão ser realizados, impreterivelmente, até o dia 10 de cada mês.',
       '7.2. Os valores estabelecidos são:',
-      'Mensalista: R$ 35,00 por mês.',
-      'Convidado: R$ 15,00 por Baba.',
-      'Multa por ausência sem aviso: R$ 10,00.',
+      'Mensalista: R\$ 35,00 por mês.',
+      'Convidado: R\$ 15,00 por Baba.',
+      'Multa por ausência sem aviso: R\$ 10,00.',
       '7.3. Os convidados deverão pagar o valor correspondente a cada Baba em que participarem.',
       'Chave PIX: 73998084515',
       'É responsabilidade de cada participante manter seus pagamentos em dia.',
