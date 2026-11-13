@@ -508,7 +508,7 @@ class _FootballHero extends StatelessWidget {
       const Padding(
         padding: EdgeInsets.fromLTRB(18, 17, 112, 17),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center, children: const [
+          mainAxisAlignment: MainAxisAlignment.center, children: [
           Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.circle, size: 7, color: AppColors.redLight),
             SizedBox(width: 7),
