@@ -8,6 +8,7 @@ import 'pages/history_page.dart';
 import 'pages/goalkeepers_page.dart';
 import 'pages/players_page.dart';
 import 'pages/auth_page.dart';
+import 'pages/regulation_page.dart';
 import 'services/auth_service.dart';
 
 void main() => runApp(const FutPontosApp());
@@ -604,6 +605,20 @@ class _InsightsPageState extends State<InsightsPage> {
             Text('Estatísticas e destaques', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900)),
             const SizedBox(height: 5),
             const Text('Indicadores calculados a partir dos registros da competência atual.', style: TextStyle(color: AppColors.muted)),
+            Card(
+              child: ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0x3328A745),
+                  child: Icon(Icons.menu_book_outlined, color: AppColors.redLight),
+                ),
+                title: const Text('Regulamento do Baba', style: TextStyle(fontWeight: FontWeight.w900)),
+                subtitle: const Text('Regras, condutas, pagamentos e pontuação'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const RegulationPage()),
+                ),
+              ),
+            ),
             const SizedBox(height: 18),
             _Entrance(delay: const Duration(milliseconds: 0), child: _InsightTile(title: 'Pontuador', player: byPoints.isEmpty ? null : byPoints.first, value: (p) => '${p.points} pontos', icon: Icons.bolt)),
             _Entrance(delay: const Duration(milliseconds: 55), child: _InsightTile(title: 'Artilheiro', player: byGoals.isEmpty || byGoals.first.goals == 0 ? null : byGoals.first, value: (p) => '${p.goals} gols', icon: Icons.sports_soccer)),
