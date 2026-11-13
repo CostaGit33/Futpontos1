@@ -72,6 +72,19 @@ class ApiClient {
     return data;
   }
 
+  Future<dynamic> patch(String path, Map<String, dynamic> body) async {
+    final response = await _client.patch(
+      Uri.parse('$baseUrl$path'),
+      headers: {..._headers, 'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    ).timeout(const Duration(seconds: 20));
+    final data = _decodeResponse(response);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(_errorMessage(data));
+    }
+    return data;
+  }
+
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
