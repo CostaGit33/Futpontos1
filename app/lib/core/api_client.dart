@@ -49,6 +49,71 @@ class ApiClient {
     return data;
   }
 
+
+  Future<Map<String, dynamic>> login({
+    required String email,
+    required String password,
+  }) async {
+    final response = await _client.post(
+      Uri.parse('$baseUrl/auth/login'),
+      headers: const {'Accept': 'application/json', 'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email.trim(), 'senha': password}),
+    ).timeout(const Duration(seconds: 20));
+    final data = _decodeResponse(response);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(_errorMessage(data));
+    }
+    if (data is! Map) throw const FormatException('Resposta inválida no login.');
+    return Map<String, dynamic>.from(data);
+  }
+
+  Future<Map<String, dynamic>> authMe(String token) async {
+    final response = await _client.get(
+      Uri.parse('$baseUrl/auth/me'),
+      headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
+    ).timeout(const Duration(seconds: 15));
+    final data = _decodeResponse(response);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(_errorMessage(data));
+    }
+    if (data is! Map) throw const FormatException('Resposta inválida da sessão.');
+    return Map<String, dynamic>.from(data);
+  }
+
+  Future<Map<String, dynamic>> uploadPlayerPhoto({
+    required int playerId,
+    required List<int> bytes,
+    required String filename,
+    required String token,
+  }) async {
+    final request = http.MultipartRequest(
+      'POST', Uri.parse('$baseUrl/jogadores/$playerId/foto'),
+    );
+    request.headers['Authorization'] = 'Bearer $token';
+    request.headers['Accept'] = 'application/json';
+    request.files.add(http.MultipartFile.fromBytes('foto', bytes, filename: filename));
+    final streamed = await _client.send(request).timeout(const Duration(seconds: 60));
+    final response = await http.Response.fromStream(streamed);
+    final data = _decodeResponse(response);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(_errorMessage(data));
+    }
+    if (data is! Map) throw const FormatException('Resposta inválida no envio da foto.');
+    return Map<String, dynamic>.from(data);
+  }
+
+  dynamic _decodeResponse(http.Response response) {
+    try {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } on FormatException {
+      throw const FormatException('A API retornou uma resposta inválida.');
+    }
+  }
+
+  String _errorMessage(dynamic data) => data is Map
+      ? (data['error'] ?? data['message'] ?? 'Falha na API').toString()
+      : 'Falha na API';
+
   Future<Map<String, dynamic>> health() async {
     final data = await get('/health');
     if (data is Map) return Map<String, dynamic>.from(data);
