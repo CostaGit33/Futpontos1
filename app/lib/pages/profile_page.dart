@@ -70,6 +70,72 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _refresh() async { final f = _load(); setState(() => future = f); await f; }
 
+  Future<void> _editAccount(Map<String, dynamic> user) async {
+    final name = TextEditingController(text: user['nome']?.toString() ?? '');
+    final oldPassword = TextEditingController();
+    final newPassword = TextEditingController();
+    final confirm = TextEditingController();
+    var changePassword = false;
+    final save = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Configurações da conta'),
+          content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: name, decoration: const InputDecoration(labelText: 'Nome de exibição')),
+            const SizedBox(height: 8),
+            Text('E-mail: ' + (user['email']?.toString() ?? '—'),
+                style: const TextStyle(color: AppColors.muted)),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Alterar senha'),
+              value: changePassword,
+              onChanged: (value) => setDialogState(() => changePassword = value),
+            ),
+            if (changePassword) ...[
+              TextField(controller: oldPassword, obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Senha atual')),
+              TextField(controller: newPassword, obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Nova senha (mínimo 10 caracteres)')),
+              TextField(controller: confirm, obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Confirmar nova senha')),
+            ],
+          ])),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Salvar')),
+          ],
+        ),
+      ),
+    );
+    if (save != true || !mounted) {
+      name.dispose(); oldPassword.dispose(); newPassword.dispose(); confirm.dispose();
+      return;
+    }
+    try {
+      final body = <String, dynamic>{'nome': name.text.trim()};
+      if (changePassword) {
+        if (newPassword.text.length < 10) throw Exception('A nova senha deve ter pelo menos 10 caracteres.');
+        if (newPassword.text != confirm.text) throw Exception('As senhas novas não coincidem.');
+        body['senha_atual'] = oldPassword.text;
+        body['nova_senha'] = newPassword.text;
+      }
+      await widget.api.patch('/auth/profile', body);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Configurações atualizadas com sucesso.')),
+        );
+        await _refresh();
+      }
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      name.dispose(); oldPassword.dispose(); newPassword.dispose(); confirm.dispose();
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Meu perfil'), actions: [
@@ -113,8 +179,9 @@ class _ProfilePageState extends State<ProfilePage> {
             const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('Não foi possível carregar os dados esportivos.'))),
           const SizedBox(height: 14),
           Card(child: Column(children: [
-            ListTile(leading: const Icon(Icons.manage_accounts_outlined), title: const Text('Dados da conta'),
-              subtitle: Text('Nome: ' + (user['nome']?.toString() ?? '—') + '\nE-mail: ' + (user['email']?.toString() ?? '—'))),
+            ListTile(leading: const Icon(Icons.manage_accounts_outlined), title: const Text('Configurações da conta'),
+              subtitle: const Text('Editar nome de exibição e alterar senha'), trailing: const Icon(Icons.chevron_right),
+              onTap: () => _editAccount(user)),
             const Divider(height: 1),
             ListTile(leading: const Icon(Icons.verified_user_outlined), title: const Text('Vínculo esportivo'),
               subtitle: Text(_linkText(link))),
