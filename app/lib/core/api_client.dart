@@ -137,6 +137,28 @@ class ApiClient {
     return Map<String, dynamic>.from(data);
   }
 
+  Future<Map<String, dynamic>> uploadGoalkeeperPhoto({
+    required int goalkeeperId,
+    required List<int> bytes,
+    required String filename,
+    required String token,
+  }) async {
+    final request = http.MultipartRequest(
+      'POST', Uri.parse('$baseUrl/goleiros/$goalkeeperId/foto'),
+    );
+    request.headers['Authorization'] = 'Bearer $token';
+    request.headers['Accept'] = 'application/json';
+    request.files.add(http.MultipartFile.fromBytes('foto', bytes, filename: filename));
+    final streamed = await _client.send(request).timeout(const Duration(seconds: 60));
+    final response = await http.Response.fromStream(streamed);
+    final data = _decodeResponse(response);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(_errorMessage(data));
+    }
+    if (data is! Map) throw const FormatException('Resposta inválida no envio da foto.');
+    return Map<String, dynamic>.from(data);
+  }
+
   dynamic _decodeResponse(http.Response response) {
     try {
       return jsonDecode(utf8.decode(response.bodyBytes));
