@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../core/api_client.dart';
 import '../core/app_theme.dart';
 import '../data/analytics.dart';
 import '../data/player.dart';
@@ -46,7 +49,8 @@ const Map<String, List<int>> _manualAssessments = {
 };
 
 class PlayersPage extends StatefulWidget {
-  const PlayersPage({super.key, required this.loadPlayers, required this.loadPlayerDetails, required this.loadAssessments});
+  const PlayersPage({super.key, required this.api, required this.loadPlayers, required this.loadPlayerDetails, required this.loadAssessments});
+  final ApiClient api;
   final Future<List<Player>> Function() loadPlayers;
   final Future<Map<String, dynamic>> Function(int id) loadPlayerDetails;
   final Future<List<Map<String, dynamic>>> Function() loadAssessments;
@@ -211,6 +215,7 @@ class _PlayersPageState extends State<PlayersPage> {
                     if (!context.mounted) return;
                     Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => PlayerProfilePage(
+                        api: widget.api,
                         player: selectedPlayer,
                         assessment: assessment,
                         assessmentSource: assessmentSource,
@@ -227,7 +232,8 @@ class _PlayersPageState extends State<PlayersPage> {
 }
 
 class PlayerProfilePage extends StatelessWidget {
-  const PlayerProfilePage({super.key, required this.player, this.assessment, this.assessmentSource});
+  const PlayerProfilePage({super.key, required this.api, required this.player, this.assessment, this.assessmentSource});
+  final ApiClient api;
   final Player player;
   final List<int>? assessment;
   final String? assessmentSource;
@@ -244,11 +250,7 @@ class PlayerProfilePage extends StatelessWidget {
           Card(child: Padding(
             padding: const EdgeInsets.all(18),
             child: Row(children: [
-              PlayerAvatar(
-                photo: player.photo,
-                radius: 34,
-                fallback: const Icon(Icons.person, size: 34),
-              ),
+              _ProfilePhotoEditor(api: api, player: player),
               const SizedBox(width: 14),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(player.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
@@ -309,6 +311,183 @@ class PlayerProfilePage extends StatelessWidget {
       ),
     );
   }
+}
+
+
+class _ProfilePhotoEditor extends StatefulWidget {
+  const _ProfilePhotoEditor({required this.api, required this.player});
+  final ApiClient api;
+  final Player player;
+
+  @override
+  State<_ProfilePhotoEditor> createState() => _ProfilePhotoEditorState();
+}
+
+class _ProfilePhotoEditorState extends State<_ProfilePhotoEditor> {
+  final ImagePicker _picker = ImagePicker();
+  String? _photo;
+  bool _uploading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _photo = widget.player.photo;
+  }
+
+  Future<String?> _loginIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    var token = prefs.getString('futpontos_auth_token');
+    if (token == null || token.isEmpty) {
+      final emailController = TextEditingController();
+      final passwordController = TextEditingController();
+      final credentials = await showDialog<Map<String, String>>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Entrar para alterar a foto'),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(
+              controller: emailController,
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              decoration: const InputDecoration(labelText: 'E-mail'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              autofillHints: const [AutofillHints.password],
+              decoration: const InputDecoration(labelText: 'Senha'),
+            ),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancelar')),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, {
+                'email': emailController.text.trim(),
+                'password': passwordController.text,
+              }),
+              child: const Text('Entrar'),
+            ),
+          ],
+        ),
+      );
+      emailController.dispose();
+      passwordController.dispose();
+      if (credentials == null) return null;
+      final login = await widget.api.login(
+        email: credentials['email'] ?? '',
+        password: credentials['password'] ?? '',
+      );
+      token = login['token']?.toString();
+      if (token == null || token.isEmpty) throw Exception('A API não retornou uma sessão válida.');
+      await prefs.setString('futpontos_auth_token', token);
+    }
+
+    try {
+      final session = await widget.api.authMe(token);
+      final links = session['vinculos'];
+      final approved = links is List && links.any((item) =>
+        item is Map &&
+        item['profile_type'] == 'jogador' &&
+        '${item['profile_id']}' == '${widget.player.id}' &&
+        item['status'] == 'approved');
+      if (!approved) {
+        throw Exception('Sua conta ainda não possui vínculo aprovado com este jogador. Solicite a aprovação do vínculo antes de alterar a foto.');
+      }
+      return token;
+    } catch (_) {
+      await prefs.remove('futpontos_auth_token');
+      rethrow;
+    }
+  }
+
+  Future<void> _chooseAndUpload() async {
+    if (_uploading) return;
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (sheetContext) => SafeArea(child: Wrap(children: [
+        ListTile(
+          leading: const Icon(Icons.photo_library_outlined),
+          title: const Text('Escolher da galeria'),
+          onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+        ),
+        ListTile(
+          leading: const Icon(Icons.photo_camera_outlined),
+          title: const Text('Tirar uma foto'),
+          onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+        ),
+      ])),
+    );
+    if (source == null || !mounted) return;
+    try {
+      final image = await _picker.pickImage(source: source, imageQuality: 85, maxWidth: 1400);
+      if (image == null || !mounted) return;
+      final bytes = await image.readAsBytes();
+      if (bytes.length > 5 * 1024 * 1024) {
+        throw Exception('A imagem deve ter no máximo 5 MB.');
+      }
+      setState(() => _uploading = true);
+      final token = await _loginIfNeeded();
+      if (token == null) return;
+      final result = await widget.api.uploadPlayerPhoto(
+        playerId: widget.player.id,
+        bytes: bytes,
+        filename: image.name,
+        token: token,
+      );
+      if (!mounted) return;
+      setState(() => _photo = resolvePlayerPhoto(result['foto']));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Foto de perfil atualizada com sucesso.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Stack(alignment: Alignment.bottomRight, children: [
+        PlayerAvatar(
+          photo: _photo,
+          radius: 34,
+          fallback: const Icon(Icons.person, size: 34),
+        ),
+        if (_uploading)
+          const Positioned.fill(child: CircleAvatar(
+            radius: 34,
+            backgroundColor: Color(0x99000000),
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ))
+        else
+          Positioned(
+            right: -7,
+            bottom: -7,
+            child: IconButton.filled(
+              tooltip: 'Alterar foto',
+              visualDensity: VisualDensity.compact,
+              onPressed: _chooseAndUpload,
+              icon: const Icon(Icons.camera_alt_outlined, size: 16),
+            ),
+          ),
+      ]),
+      const SizedBox(height: 8),
+      TextButton(
+        onPressed: _uploading ? null : _chooseAndUpload,
+        child: Text(_uploading ? 'Enviando...' : 'Alterar foto'),
+      ),
+    ],
+  );
 }
 
 class _ProfileMetric extends StatelessWidget {
