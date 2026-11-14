@@ -4,7 +4,7 @@
     <application
         android:label="futpontos1"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@drawable/ic_launcher_ball">
         <activity
             android:name=".MainActivity"
             android:exported="true"
