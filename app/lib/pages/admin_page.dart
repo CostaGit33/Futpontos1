@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import '../core/api_client.dart';
 import '../core/app_theme.dart';
+import '../widgets/intelligent_registration_page.dart';
 
 class AdminPage extends StatefulWidget {
   const AdminPage({super.key, required this.api});
@@ -132,15 +133,16 @@ class _AdminPageState extends State<AdminPage> {
       final d = s.data!;
       final stats = map(d.overview['resumo']);
       final self = int.tryParse('${map(d.overview['administrador_atual'])['id']}') ?? -1;
-      return DefaultTabController(length: 5, child: Column(children: [
+      return DefaultTabController(length: 6, child: Column(children: [
         Material(color: Theme.of(context).colorScheme.surface, child: const TabBar(isScrollable: true, tabs: [
           Tab(icon: Icon(Icons.dashboard_outlined), text: 'Resumo'),
           Tab(icon: Icon(Icons.sports_soccer), text: 'Atletas'),
           Tab(icon: Icon(Icons.people_outline), text: 'Pessoas'),
           Tab(icon: Icon(Icons.verified_user_outlined), text: 'Aprovações'),
-          Tab(icon: Icon(Icons.receipt_long_outlined), text: 'Registro'),
+          Tab(icon: Icon(Icons.auto_awesome), text: 'Registro IA'),
+          Tab(icon: Icon(Icons.receipt_long_outlined), text: 'Auditoria'),
         ])),
-        Expanded(child: TabBarView(children: [summary(d, stats), athletes(d), users(d.users, self), links(d.links), audit(d.audit)])),
+        Expanded(child: TabBarView(children: [summary(d, stats), athletes(d), users(d.users, self), links(d.links), IntelligentRegistrationPage(api: widget.api, onRegistered: refresh), audit(d.audit)])),
       ]));
     }),
   );
