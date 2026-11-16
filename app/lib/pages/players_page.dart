@@ -158,9 +158,13 @@ class _PlayersPageState extends State<PlayersPage> {
                       final records = await widget.loadAssessments();
                       for (final record in records) {
                         if ('${record['id']}' != '${entry.value.id}') continue;
-                        final rawAssessment = record['avaliacao'] is Map
-                            ? Map<String, dynamic>.from(record['avaliacao'] as Map)
-                            : record;
+                        if (record['avaliacao'] == null) break;
+                        if (record['avaliacao'] is! Map) {
+                          throw const FormatException(
+                            'A API retornou um formato inválido para a avaliação técnica.');
+                        }
+                        final rawAssessment =
+                            Map<String, dynamic>.from(record['avaliacao'] as Map);
                         const keys = ['defesa', 'ataque', 'velocidade', 'habilidade', 'passe'];
                         final values = keys
                             .map((key) => int.tryParse('${rawAssessment[key]}'))
@@ -255,7 +259,7 @@ class PlayerProfilePage extends StatelessWidget {
             style: const TextStyle(color: AppColors.muted, fontSize: 12)),
           const SizedBox(height: 10),
           if (technicalAssessment == null)
-            const Card(child: Padding(padding: EdgeInsets.all(16),
+            Card(child: Padding(padding: const EdgeInsets.all(16),
               child: Text(assessmentError ?? 'Este jogador ainda não possui avaliação técnica manual cadastrada.')))
           else
             Card(child: Padding(
