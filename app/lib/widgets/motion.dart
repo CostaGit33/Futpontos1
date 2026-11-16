@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 /// Entrada discreta para listas e blocos de conteúdo.
@@ -23,6 +25,8 @@ class _MotionRevealState extends State<MotionReveal>
   late final AnimationController _controller;
   late final Animation<double> _opacity;
   late final Animation<Offset> _position;
+  Timer? _delayTimer;
+  bool _startScheduled = false;
 
   @override
   void initState() {
@@ -39,20 +43,25 @@ class _MotionRevealState extends State<MotionReveal>
       parent: _controller,
       curve: Curves.easeOutCubic,
     ));
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
-        _controller.value = 1;
-        return;
-      }
-      Future<void>.delayed(widget.delay, () {
-        if (mounted) _controller.forward();
-      });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_startScheduled) return;
+    _startScheduled = true;
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      _controller.value = 1;
+      return;
+    }
+    _delayTimer = Timer(widget.delay, () {
+      if (mounted) _controller.forward();
     });
   }
 
   @override
   void dispose() {
+    _delayTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -132,6 +141,53 @@ class MotionProgressBar extends StatelessWidget {
         color: color,
         semanticsLabel: semanticsLabel,
         semanticsValue: '${(target * 100).round()}%',
+      ),
+    );
+  }
+}
+
+
+/// Feedback tátil/visual discreto para superfícies acionáveis.
+class MotionTap extends StatefulWidget {
+  const MotionTap({
+    super.key,
+    required this.child,
+    required this.onTap,
+    this.borderRadius = const BorderRadius.all(Radius.circular(14)),
+  });
+
+  final Widget child;
+  final VoidCallback? onTap;
+  final BorderRadius borderRadius;
+
+  @override
+  State<MotionTap> createState() => _MotionTapState();
+}
+
+class _MotionTapState extends State<MotionTap> {
+  bool _highlighted = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    return AnimatedScale(
+      scale: _highlighted && !reducedMotion ? .975 : 1,
+      duration: reducedMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 110),
+      curve: Curves.easeOutCubic,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: widget.borderRadius,
+          onTap: widget.onTap,
+          onHighlightChanged: (value) {
+            if (_highlighted != value) {
+              setState(() => _highlighted = value);
+            }
+          },
+          child: widget.child,
+        ),
       ),
     );
   }
