@@ -152,7 +152,7 @@ class _PlayersPageState extends State<PlayersPage> {
                 child: Text('Nenhum jogador encontrado.')))
             else
               ...players.asMap().entries.map((entry) => MotionReveal(
-                delay: Duration(milliseconds: 28 * entry.key.clamp(0, 7)),
+                delay: Duration(milliseconds: 28 * entry.key.clamp(0, 7).toInt()),
                 child: Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
@@ -308,7 +308,7 @@ class PlayerProfilePage extends StatelessWidget {
             color: AppColors.redLight, fontWeight: FontWeight.w900, letterSpacing: 1)),
           const SizedBox(height: 8),
           Card(child: Column(children: achievements.asMap().entries.map((entry) => MotionReveal(
-            delay: Duration(milliseconds: 35 * entry.key.clamp(0, 6)),
+            delay: Duration(milliseconds: 35 * entry.key.clamp(0, 6).toInt()),
             child: ListTile(
               leading: Text(entry.value.icon, style: const TextStyle(fontSize: 22)),
               title: Text(entry.value.title, style: const TextStyle(fontWeight: FontWeight.w800)),
