@@ -227,7 +227,7 @@ class _PlayersPageState extends State<PlayersPage> {
                     ));
                   },
                 ),
-              )),
+              ))),
           ],
         ),
       );
