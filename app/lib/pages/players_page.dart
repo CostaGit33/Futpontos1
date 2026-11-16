@@ -152,14 +152,17 @@ class _PlayersPageState extends State<PlayersPage> {
                 child: Text('Nenhum jogador encontrado.')))
             else
               ...players.asMap().entries.map((entry) => MotionReveal(
-                delay: Duration(milliseconds: 32 * entry.key),
+                delay: Duration(milliseconds: 28 * entry.key.clamp(0, 7)),
                 child: Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
-                  leading: PlayerAvatar(
-                    photo: entry.value.photo,
-                    radius: 20,
-                    fallback: Text('${entry.key + 1}'),
+                  leading: Hero(
+                    tag: 'player-avatar-${entry.value.id}',
+                    child: PlayerAvatar(
+                      photo: entry.value.photo,
+                      radius: 20,
+                      fallback: Text('${entry.key + 1}'),
+                    ),
                   ),
                   title: Text(entry.value.name, style: const TextStyle(fontWeight: FontWeight.w800)),
                   subtitle: Text('${entry.value.wins} vitórias • ${entry.value.goals} gols • ${entry.value.saves} defesas'),
@@ -305,7 +308,7 @@ class PlayerProfilePage extends StatelessWidget {
             color: AppColors.redLight, fontWeight: FontWeight.w900, letterSpacing: 1)),
           const SizedBox(height: 8),
           Card(child: Column(children: achievements.asMap().entries.map((entry) => MotionReveal(
-            delay: Duration(milliseconds: 45 * entry.key),
+            delay: Duration(milliseconds: 35 * entry.key.clamp(0, 6)),
             child: ListTile(
               leading: Text(entry.value.icon, style: const TextStyle(fontSize: 22)),
               title: Text(entry.value.title, style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -463,10 +466,13 @@ class _ProfilePhotoEditorState extends State<_ProfilePhotoEditor> {
     mainAxisSize: MainAxisSize.min,
     children: [
       Stack(alignment: Alignment.bottomRight, children: [
-        PlayerAvatar(
-          photo: _photo,
-          radius: 34,
-          fallback: const Icon(Icons.person, size: 34),
+        Hero(
+          tag: 'player-avatar-${widget.player.id}',
+          child: PlayerAvatar(
+            photo: _photo,
+            radius: 34,
+            fallback: const Icon(Icons.person, size: 34),
+          ),
         ),
         if (_uploading)
           const Positioned.fill(child: CircleAvatar(
