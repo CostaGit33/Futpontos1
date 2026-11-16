@@ -1,54 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/token_storage.dart';
 import '../core/api_client.dart';
 import '../core/app_theme.dart';
 import '../data/analytics.dart';
 import '../data/player.dart';
 import '../widgets/sports_banner.dart';
 import '../widgets/motion.dart';
-
-/// Avaliação técnica manual realizada em campo. Escala original: 0 a 20.
-/// A associação é pelo nome exato, como no cadastro manual do PWA.
-const Map<String, List<int>> _manualAssessments = {
-  'Mikael': [5, 11, 0, 5, 9],
-  'Henrique Noronha': [14, 4, 1, 3, 17],
-  'Alex': [2, 16, 10, 13, 13],
-  'Victor': [3, 11, 17, 11, 10],
-  'Jhon100%': [2, 15, 1, 2, 5],
-  'Israel': [2, 0, 5, 16, 15],
-  'Fernando': [0, 17, 8, 13, 11],
-  'Eric': [4, 13, 12, 11, 7],
-  'Rai Ortiz': [15, 0, 0, 0, 0],
-  'Beninha': [10, 3, 0, 1, 2],
-  'Marcão': [17, 0, 1, 8, 14],
-  'Maicon': [9, 16, 14, 14, 9],
-  'Joel': [16, 1, 8, 1, 6],
-  'Kaio Kros': [12, 0, 2, 1, 7],
-  'Theu': [6, 18, 16, 5, 5],
-  'Fabio': [17, 0, 1, 2, 10],
-  'Henrique Barbeiro': [10, 12, 1, 9, 9],
-  'Pedro Uggere': [19, 0, 6, 11, 13],
-  'Savio': [16, 2, 7, 1, 6],
-  'Adailson': [12, 1, 2, 2, 0],
-  'Hélio Júnior': [1, 5, 0, 7, 4],
-  'Jadson': [2, 3, 3, 6, 10],
-  'Samuel': [0, 5, 2, 13, 11],
-  'uilliam Peixe': [15, 5, 6, 15, 11],
-  'Edmilson Novais': [8, 3, 14, 7, 2],
-  'Edmilson Pereira': [16, 0, 1, 1, 7],
-  'DN': [2, 11, 5, 3, 3],
-  'Hudson': [16, 0, 0, 3, 14],
-  'Bicudo': [17, 0, 2, 2, 12],
-  'João B.': [16, 7, 12, 4, 4],
-  'Henrigol': [0, 10, 7, 4, 9],
-  'Guilherme': [7, 0, 9, 0, 0],
-  'Wenderson': [0, 12, 12, 12, 9],
-  'Arlley': [10, 5, 0, 0, 0],
-  'Wendel': [2, 12, 2, 15, 15],
-  'Thomas': [10, 10, 0, 4, 13],
-  'Luis henrique': [10, 3, 1, 5, 10],
-};
 
 class PlayersPage extends StatefulWidget {
   const PlayersPage({super.key, required this.api, required this.loadPlayers, required this.loadPlayerDetails, required this.loadAssessments});
@@ -173,6 +131,7 @@ class _PlayersPageState extends State<PlayersPage> {
                   ]),
                   onTap: () async {
                     var selectedPlayer = entry.value;
+                    String? syncWarning;
                     try {
                       final raw = await widget.loadPlayerDetails(entry.value.id);
                       final detail = raw['jogador'] is Map
@@ -190,8 +149,8 @@ class _PlayersPageState extends State<PlayersPage> {
                         'infracoes': entry.value.fouls,
                         ...detail,
                       });
-                    } catch (_) {
-                      // Mantém os dados da listagem se o endpoint individual falhar.
+                    } catch (error) {
+                      syncWarning = 'Detalhes atualizados parcialmente: ${error.toString()}';
                     }
                     List<int>? assessment;
                     String? assessmentSource;
@@ -210,22 +169,25 @@ class _PlayersPageState extends State<PlayersPage> {
                         }
                         break;
                       }
-                    } catch (_) {
-                      // A avaliação manual local continua disponível como contingência.
-                    }
-                    if (assessment == null) {
-                      assessment = _manualAssessmentFor(entry.value.name);
-                      if (assessment != null) {
-                        assessmentSource = 'Avaliação manual local de referência • escala de 0 a 20';
-                      }
+                    } catch (error) {
+                      assessmentSource = 'Falha ao sincronizar a avaliação técnica.';
+                      syncWarning = [syncWarning, 'Avaliação não sincronizada: $error']
+                          .whereType<String>().join(' ');
                     }
                     if (!context.mounted) return;
+                    if (syncWarning != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(syncWarning!)),
+                      );
+                    }
                     Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => PlayerProfilePage(
                         api: widget.api,
                         player: selectedPlayer,
                         assessment: assessment,
                         assessmentSource: assessmentSource,
+                        assessmentError: assessmentSource?.startsWith('Falha') == true
+                            ? assessmentSource : null,
                       ),
                     ));
                   },
@@ -239,11 +201,12 @@ class _PlayersPageState extends State<PlayersPage> {
 }
 
 class PlayerProfilePage extends StatelessWidget {
-  const PlayerProfilePage({super.key, required this.api, required this.player, this.assessment, this.assessmentSource});
+  const PlayerProfilePage({super.key, required this.api, required this.player, this.assessment, this.assessmentSource, this.assessmentError});
   final ApiClient api;
   final Player player;
   final List<int>? assessment;
   final String? assessmentSource;
+  final String? assessmentError;
 
   @override
   Widget build(BuildContext context) {
@@ -287,7 +250,7 @@ class PlayerProfilePage extends StatelessWidget {
           const SizedBox(height: 10),
           if (technicalAssessment == null)
             const Card(child: Padding(padding: EdgeInsets.all(16),
-              child: Text('Este jogador ainda não possui avaliação técnica manual cadastrada.')))
+              child: Text(assessmentError ?? 'Este jogador ainda não possui avaliação técnica manual cadastrada.')))
           else
             Card(child: Padding(
               padding: const EdgeInsets.all(16),
@@ -345,9 +308,9 @@ class _ProfilePhotoEditorState extends State<_ProfilePhotoEditor> {
   }
 
   Future<String?> _loginIfNeeded() async {
-    final prefs = await SharedPreferences.getInstance();
+    const tokenStorage = TokenStorage();
     if (!mounted) return null;
-    var token = prefs.getString('futpontos_auth_token');
+    var token = await tokenStorage.readToken();
     if (token == null || token.isEmpty) {
       final emailController = TextEditingController();
       final passwordController = TextEditingController();
@@ -391,25 +354,20 @@ class _ProfilePhotoEditorState extends State<_ProfilePhotoEditor> {
       );
       token = login['token']?.toString();
       if (token == null || token.isEmpty) throw Exception('A API não retornou uma sessão válida.');
-      await prefs.setString('futpontos_auth_token', token);
+      await tokenStorage.writeToken(token);
     }
 
-    try {
-      final session = await widget.api.authMe(token);
-      final links = session['vinculos'];
-      final approved = links is List && links.any((item) =>
-        item is Map &&
-        item['profile_type'] == 'jogador' &&
-        '${item['profile_id']}' == '${widget.player.id}' &&
-        item['status'] == 'approved');
-      if (!approved) {
-        throw Exception('Sua conta ainda não possui vínculo aprovado com este jogador. Solicite a aprovação do vínculo antes de alterar a foto.');
-      }
-      return token;
-    } catch (_) {
-      await prefs.remove('futpontos_auth_token');
-      rethrow;
+    final session = await widget.api.authMe(token);
+    final links = session['vinculos'];
+    final approved = links is List && links.any((item) =>
+      item is Map &&
+      item['profile_type'] == 'jogador' &&
+      '${item['profile_id']}' == '${widget.player.id}' &&
+      item['status'] == 'approved');
+    if (!approved) {
+      throw Exception('Sua conta ainda não possui vínculo aprovado com este jogador. Solicite a aprovação do vínculo antes de alterar a foto.');
     }
+    return token;
   }
 
   Future<void> _chooseAndUpload() async {
@@ -548,16 +506,3 @@ class _AssessmentBar extends StatelessWidget {
   );
 }
 
-
-String _normalizePlayerName(String value) => value
-    .trim()
-    .toLowerCase()
-    .replaceAll(RegExp(r'\s+'), ' ');
-
-List<int>? _manualAssessmentFor(String name) {
-  final normalized = _normalizePlayerName(name);
-  for (final entry in _manualAssessments.entries) {
-    if (_normalizePlayerName(entry.key) == normalized) return entry.value;
-  }
-  return null;
-}
