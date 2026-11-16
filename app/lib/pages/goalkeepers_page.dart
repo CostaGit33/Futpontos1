@@ -5,6 +5,7 @@ import '../core/app_theme.dart';
 import '../data/goalkeeper.dart';
 import '../data/player.dart';
 import '../widgets/sports_banner.dart';
+import '../widgets/motion.dart';
 
 class GoalkeepersPage extends StatefulWidget {
   const GoalkeepersPage({super.key, required this.api});
@@ -94,10 +95,13 @@ class _GoalkeepersPageState extends State<GoalkeepersPage> {
               const SizedBox(height: 22),
               const Text('Ranking de goleiros', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
               const SizedBox(height: 9),
-              ...keepers.asMap().entries.map((entry) => _GoalkeeperTile(
+              ...keepers.asMap().entries.map((entry) => MotionReveal(
+                delay: Duration(milliseconds: 32 * entry.key),
+                child: _GoalkeeperTile(
                 position: entry.key + 1,
                 goalkeeper: entry.value,
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GoalkeeperDetailPage(api: widget.api, goalkeeper: entry.value))),
+              )),
               )),
             ],
           ],
