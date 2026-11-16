@@ -187,7 +187,7 @@ class _PlayersPageState extends State<PlayersPage> {
                     if (!context.mounted) return;
                     if (syncWarning != null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(syncWarning!)),
+                        SnackBar(content: Text(syncWarning)),
                       );
                     }
                     Navigator.of(context).push(MaterialPageRoute(
@@ -319,8 +319,8 @@ class _ProfilePhotoEditorState extends State<_ProfilePhotoEditor> {
 
   Future<String?> _loginIfNeeded() async {
     const tokenStorage = TokenStorage();
-    if (!mounted) return null;
     var token = await tokenStorage.readToken();
+    if (!mounted) return null;
     if (token == null || token.isEmpty) {
       final emailController = TextEditingController();
       final passwordController = TextEditingController();
