@@ -1,53 +1,52 @@
-import 'package:shared_preferences/shared_preferences.dart';
 import '../core/api_client.dart';
+import 'token_storage.dart';
 
 class AuthService {
   AuthService(this.api);
 
   final ApiClient api;
-  static const _tokenKey = 'futpontos_auth_token';
+  final TokenStorage _tokenStorage = const TokenStorage();
 
   Future<bool> restoreSession() async {
+    final token = await _tokenStorage.readToken();
+    if (token == null || token.isEmpty) {
+      api.setBearerToken(null);
+      return false;
+    }
+    api.setBearerToken(token);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(_tokenKey);
-      if (token == null || token.isEmpty) return false;
-      api.setBearerToken(token);
       await api.authMe(token);
       return true;
+    } on ApiException catch (error) {
+      if (error.statusCode == 401 || error.statusCode == 403) {
+        await _tokenStorage.deleteToken();
+        api.setBearerToken(null);
+        return false;
+      }
+      api.setBearerToken(null);
+      rethrow;
     } catch (_) {
       api.setBearerToken(null);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_tokenKey);
-      return false;
+      rethrow;
     }
   }
 
   Future<void> login(String email, String password) async {
     final result = await api.login(email: email, password: password);
     final token = result['token']?.toString();
-    if (token == null || token.isEmpty) {
-      throw const FormatException('Resposta de login inválida.');
-    }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
+    if (token == null || token.isEmpty) throw const FormatException('Resposta de login inválida.');
+    await _tokenStorage.writeToken(token);
     api.setBearerToken(token);
   }
 
   Future<Map<String, dynamic>> register({
-    required String name,
-    required String email,
-    required String password,
-    String? profileType,
-    int? profileId,
+    required String name, required String email, required String password,
+    String? profileType, int? profileId,
   }) async {
     final result = await api.post('/auth/register', {
-      'nome': name.trim(),
-      'email': email.trim(),
-      'senha': password,
+      'nome': name.trim(), 'email': email.trim(), 'senha': password,
       if (profileType != null && profileId != null) ...{
-        'tipo_perfil': profileType,
-        'perfil_id': profileId,
+        'tipo_perfil': profileType, 'perfil_id': profileId,
       },
     });
     if (result is! Map) throw const FormatException('Resposta de cadastro inválida.');
@@ -58,9 +57,8 @@ class AuthService {
     try {
       await api.post('/auth/logout', {});
     } finally {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_tokenKey);
-      api.setBearerToken(null);
+      try { await _tokenStorage.deleteToken(); }
+      finally { api.setBearerToken(null); }
     }
   }
 }
