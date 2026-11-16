@@ -367,10 +367,12 @@ class _OwnPlayerPhotoEditorState extends State<_OwnPlayerPhotoEditor> {
     } catch (_) {
       return false;
     } finally {
-      if (mounted) setState(() {
-        _authorized = _token != null;
-        _checking = false;
-      });
+      if (mounted) {
+        setState(() {
+          _authorized = _token != null;
+          _checking = false;
+        });
+      }
     }
   }
 
