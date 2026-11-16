@@ -414,7 +414,7 @@ class _RadarPainter extends CustomPainter {
 
     final dataPath = Path();
     for (var i = 0; i < count; i++) {
-      final p = point(i, (values[i].clamp(0, 20)) / 20);
+      final p = point(i, ((values[i].clamp(0, 20)) / 20) * progress);
       if (i == 0) { dataPath.moveTo(p.dx, p.dy); } else { dataPath.lineTo(p.dx, p.dy); }
     }
     dataPath.close();
