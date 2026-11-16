@@ -389,7 +389,7 @@ class _Stats extends StatelessWidget {
           Text(entry.value.$1, textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 10, color: AppColors.muted)),
         ])),
-    )).toList(),
+    ))).toList(),
   );
 }
 
