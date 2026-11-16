@@ -26,4 +26,26 @@ void main() {
     expect(find.text('17'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
   });
+
+  testWidgets('MotionTap executa a ação ao toque', (tester) async {
+    var tapped = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: MotionTap(
+              onTap: () => tapped = true,
+              child: const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Toque'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Toque'));
+    expect(tapped, isTrue);
+  });
 }
