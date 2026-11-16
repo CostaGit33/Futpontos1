@@ -496,9 +496,19 @@ class _ProfilePhotoEditorState extends State<_ProfilePhotoEditor> {
           ),
       ]),
       const SizedBox(height: 8),
-      TextButton(
-        onPressed: _uploading ? null : _chooseAndUpload,
-        child: Text(_uploading ? 'Enviando...' : 'Alterar foto'),
+      MotionTap(
+        onTap: _uploading ? null : _chooseAndUpload,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          child: Text(
+            _uploading ? 'Enviando...' : 'Alterar foto',
+            style: TextStyle(
+              color: _uploading ? AppColors.muted : AppColors.redLight,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
       ),
     ],
   );
