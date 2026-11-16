@@ -162,10 +162,16 @@ class _PlayersPageState extends State<PlayersPage> {
                             ? Map<String, dynamic>.from(record['avaliacao'] as Map)
                             : record;
                         const keys = ['defesa', 'ataque', 'velocidade', 'habilidade', 'passe'];
-                        if (keys.every((key) => rawAssessment[key] != null)) {
-                          assessment = keys.map((key) =>
-                            int.tryParse('${rawAssessment[key]}') ?? 0).toList();
+                        final values = keys
+                            .map((key) => int.tryParse('${rawAssessment[key]}'))
+                            .toList();
+                        if (values.every((value) =>
+                            value != null && value >= 0 && value <= 20)) {
+                          assessment = values.cast<int>();
                           assessmentSource = 'Avaliação manual sincronizada pela API • escala de 0 a 20';
+                        } else {
+                          throw const FormatException(
+                            'A API retornou uma avaliação incompleta ou fora da escala de 0 a 20.');
                         }
                         break;
                       }
@@ -357,7 +363,13 @@ class _ProfilePhotoEditorState extends State<_ProfilePhotoEditor> {
       await tokenStorage.writeToken(token);
     }
 
-    final session = await widget.api.authMe(token);
+    late final Map<String, dynamic> session;
+    try {
+      session = await widget.api.authMe(token);
+    } on ApiException catch (error) {
+      if (error.statusCode == 401) await tokenStorage.deleteToken();
+      rethrow;
+    }
     final links = session['vinculos'];
     final approved = links is List && links.any((item) =>
       item is Map &&
