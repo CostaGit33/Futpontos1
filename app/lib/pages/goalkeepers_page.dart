@@ -96,7 +96,7 @@ class _GoalkeepersPageState extends State<GoalkeepersPage> {
               const Text('Ranking de goleiros', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
               const SizedBox(height: 9),
               ...keepers.asMap().entries.map((entry) => MotionReveal(
-                delay: Duration(milliseconds: 32 * entry.key),
+                delay: Duration(milliseconds: 28 * entry.key.clamp(0, 7)),
                 child: _GoalkeeperTile(
                 position: entry.key + 1,
                 goalkeeper: entry.value,
@@ -155,7 +155,11 @@ class _GoalkeeperTile extends StatelessWidget {
     margin: const EdgeInsets.only(bottom: 8),
     child: ListTile(
       onTap: onTap,
-      leading: PlayerAvatar(photo: goalkeeper.photo, radius: 22, fallback: Text('$position', style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.gold))),
+      leading: Hero(
+        tag: 'goalkeeper-avatar-${goalkeeper.id}',
+        child: PlayerAvatar(photo: goalkeeper.photo, radius: 22,
+          fallback: Text('$position', style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.gold))),
+      ),
       title: Text(goalkeeper.name, style: const TextStyle(fontWeight: FontWeight.w800)),
       subtitle: Text('${goalkeeper.wins} vitórias • ${goalkeeper.goals} gols • ${goalkeeper.saves} defesas', style: const TextStyle(color: AppColors.muted, fontSize: 11)), 
       trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -206,7 +210,11 @@ class _GoalkeeperDetailPageState extends State<GoalkeeperDetailPage> {
         final g = snapshot.data!.goalkeeper;
         return ListView(padding: const EdgeInsets.all(18), children: [
           Card(child: Padding(padding: const EdgeInsets.all(18), child: Row(children: [
-            PlayerAvatar(photo: g.photo, radius: 38, fallback: const Icon(Icons.sports_soccer, color: AppColors.gold)),
+            Hero(
+              tag: 'goalkeeper-avatar-${g.id}',
+              child: PlayerAvatar(photo: g.photo, radius: 38,
+                fallback: const Icon(Icons.sports_soccer, color: AppColors.gold)),
+            ),
             const SizedBox(width: 14),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(g.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)), Text('${g.points} pontos • ${g.competition ?? 'competência atual'}', style: const TextStyle(color: AppColors.muted))])),
           ]))),
@@ -339,8 +347,20 @@ class _GoalkeeperAssessment extends StatelessWidget {
             SizedBox(
               height: 250,
               width: double.infinity,
-              child: CustomPaint(
-                painter: _RadarPainter(values: values, lineColor: AppColors.redLight, gridColor: AppColors.muted.withValues(alpha: 0.35)),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: 1),
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 850),
+                curve: Curves.easeOutCubic,
+                builder: (context, progress, _) => CustomPaint(
+                  painter: _RadarPainter(
+                    values: values,
+                    progress: progress,
+                    lineColor: AppColors.redLight,
+                    gridColor: AppColors.muted.withValues(alpha: 0.35),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -360,8 +380,9 @@ class _GoalkeeperAssessment extends StatelessWidget {
 }
 
 class _RadarPainter extends CustomPainter {
-  _RadarPainter({required this.values, required this.lineColor, required this.gridColor});
+  _RadarPainter({required this.values, required this.progress, required this.lineColor, required this.gridColor});
   final List<double> values;
+  final double progress;
   final Color lineColor;
   final Color gridColor;
 
@@ -407,5 +428,5 @@ class _RadarPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _RadarPainter oldDelegate) =>
-      oldDelegate.values != values || oldDelegate.lineColor != lineColor || oldDelegate.gridColor != gridColor;
+      oldDelegate.values != values || oldDelegate.progress != progress || oldDelegate.lineColor != lineColor || oldDelegate.gridColor != gridColor;
 }
