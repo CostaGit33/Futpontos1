@@ -28,17 +28,19 @@ class ApiClient {
   /// Reaproveita uma consulta GET enquanto a mesma rota já está em andamento.
   /// Evita que telas montadas simultaneamente disparem a mesma requisição.
   Future<dynamic> get(String path) async {
-    final pending = _pendingGets[path];
+    // Não compartilha uma requisição autenticada entre sessões diferentes.
+    final requestKey = '$path|${_bearerToken ?? 'public'}';
+    final pending = _pendingGets[requestKey];
     if (pending != null) return pending;
 
     final request = _fetch(path);
-    _pendingGets[path] = request;
+    _pendingGets[requestKey] = request;
 
     try {
       return await request;
     } finally {
-      if (identical(_pendingGets[path], request)) {
-        _pendingGets.remove(path);
+      if (identical(_pendingGets[requestKey], request)) {
+        _pendingGets.remove(requestKey);
       }
     }
   }
