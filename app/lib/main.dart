@@ -913,9 +913,7 @@ class _MonthlyPointsComparisonState extends State<_MonthlyPointsComparison> {
   Future<void> _reload() async {
     final next = HistoryCollection.load(widget.api);
     setState(() => _history = next);
-    try {
-      await next;
-    } catch (_) {}
+    await next;
   }
 
   String _monthLabel(String key) {
