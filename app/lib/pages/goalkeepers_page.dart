@@ -96,7 +96,7 @@ class _GoalkeepersPageState extends State<GoalkeepersPage> {
               const Text('Ranking de goleiros', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
               const SizedBox(height: 9),
               ...keepers.asMap().entries.map((entry) => MotionReveal(
-                delay: Duration(milliseconds: 28 * entry.key.clamp(0, 7)),
+                delay: Duration(milliseconds: 28 * entry.key.clamp(0, 7).toInt()),
                 child: _GoalkeeperTile(
                 position: entry.key + 1,
                 goalkeeper: entry.value,
