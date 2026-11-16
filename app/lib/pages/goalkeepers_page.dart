@@ -314,8 +314,51 @@ class _StatsGrid extends StatelessWidget {
 class _Stat extends StatelessWidget {
   const _Stat({required this.label, required this.value});
   final String label, value;
+
   @override
-  Widget build(BuildContext context) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)), Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 11))])));
+  Widget build(BuildContext context) {
+    final isPercentage = value.endsWith('%');
+    final numericText = isPercentage
+        ? value.substring(0, value.length - 1)
+        : value;
+    final numericValue = double.tryParse(numericText);
+    final decimals = numericText.contains('.')
+        ? numericText.split('.').last.length.clamp(0, 2).toInt()
+        : 0;
+
+    return MotionReveal(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (numericValue != null)
+                MotionNumber(
+                  value: numericValue,
+                  decimals: decimals,
+                  suffix: isPercentage ? '%' : '',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                )
+              else
+                Text(value, style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                )),
+              Text(label, style: const TextStyle(
+                color: AppColors.muted,
+                fontSize: 11,
+              )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _GoalkeeperDetails {
@@ -435,7 +478,7 @@ class _RadarPainter extends CustomPainter {
     canvas.drawPath(dataPath, Paint()..color = lineColor.withValues(alpha: 0.18)..style = PaintingStyle.fill);
     canvas.drawPath(dataPath, Paint()..color = lineColor..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeJoin = StrokeJoin.round);
     for (var i = 0; i < count; i++) {
-      final p = point(i, (values[i].clamp(0, 20)) / 20);
+      final p = point(i, ((values[i].clamp(0, 20)) / 20) * progress);
       canvas.drawCircle(p, 4, Paint()..color = lineColor);
     }
   }
