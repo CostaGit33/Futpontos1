@@ -118,7 +118,11 @@ class _Podium extends StatelessWidget {
     child: Padding(
       padding: const EdgeInsets.all(14),
       child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-        for (var index = 0; index < keepers.length; index++) Expanded(child: _PodiumCard(goalkeeper: keepers[index], position: index + 1)),
+        for (var index = 0; index < keepers.length; index++)
+          Expanded(child: MotionReveal(
+            delay: Duration(milliseconds: 90 * index),
+            child: _PodiumCard(goalkeeper: keepers[index], position: index + 1),
+          )),
       ]),
     ),
   );
