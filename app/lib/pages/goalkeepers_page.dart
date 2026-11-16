@@ -5,6 +5,7 @@ import '../core/app_theme.dart';
 import '../data/goalkeeper.dart';
 import '../data/player.dart';
 import '../widgets/sports_banner.dart';
+import '../widgets/motion.dart';
 
 class GoalkeepersPage extends StatefulWidget {
   const GoalkeepersPage({super.key, required this.api});
@@ -94,11 +95,13 @@ class _GoalkeepersPageState extends State<GoalkeepersPage> {
               const SizedBox(height: 22),
               const Text('Ranking de goleiros', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
               const SizedBox(height: 9),
-              ...keepers.asMap().entries.map((entry) => _GoalkeeperTile(
+              ...keepers.asMap().entries.map((entry) => MotionReveal(
+                delay: Duration(milliseconds: 28 * entry.key.clamp(0, 7).toInt()),
+                child: _GoalkeeperTile(
                 position: entry.key + 1,
                 goalkeeper: entry.value,
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GoalkeeperDetailPage(api: widget.api, goalkeeper: entry.value))),
-              )),
+              ))),
             ],
           ],
         ),
@@ -115,7 +118,11 @@ class _Podium extends StatelessWidget {
     child: Padding(
       padding: const EdgeInsets.all(14),
       child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-        for (var index = 0; index < keepers.length; index++) Expanded(child: _PodiumCard(goalkeeper: keepers[index], position: index + 1)),
+        for (var index = 0; index < keepers.length; index++)
+          Expanded(child: MotionReveal(
+            delay: Duration(milliseconds: 90 * index),
+            child: _PodiumCard(goalkeeper: keepers[index], position: index + 1),
+          )),
       ]),
     ),
   );
@@ -148,7 +155,11 @@ class _GoalkeeperTile extends StatelessWidget {
     margin: const EdgeInsets.only(bottom: 8),
     child: ListTile(
       onTap: onTap,
-      leading: PlayerAvatar(photo: goalkeeper.photo, radius: 22, fallback: Text('$position', style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.gold))),
+      leading: Hero(
+        tag: 'goalkeeper-avatar-${goalkeeper.id}',
+        child: PlayerAvatar(photo: goalkeeper.photo, radius: 22,
+          fallback: Text('$position', style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.gold))),
+      ),
       title: Text(goalkeeper.name, style: const TextStyle(fontWeight: FontWeight.w800)),
       subtitle: Text('${goalkeeper.wins} vitórias • ${goalkeeper.goals} gols • ${goalkeeper.saves} defesas', style: const TextStyle(color: AppColors.muted, fontSize: 11)), 
       trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -194,12 +205,39 @@ class _GoalkeeperDetailPageState extends State<GoalkeeperDetailPage> {
     body: FutureBuilder<_GoalkeeperDetails>(
       future: _future,
       builder: (context, snapshot) {
-        if (snapshot.hasError) return _Error(message: snapshot.error.toString(), onRetry: () async => setState(() => _future = _load()));
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        if (snapshot.hasError) {
+          return _Error(
+            message: snapshot.error.toString(),
+            onRetry: () async => setState(() => _future = _load()),
+          );
+        }
+        if (!snapshot.hasData) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Hero(
+                  tag: 'goalkeeper-avatar-${widget.goalkeeper.id}',
+                  child: PlayerAvatar(
+                    photo: widget.goalkeeper.photo,
+                    radius: 38,
+                    fallback: const Icon(Icons.sports_soccer, color: AppColors.gold),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const CircularProgressIndicator(),
+              ],
+            ),
+          );
+        }
         final g = snapshot.data!.goalkeeper;
         return ListView(padding: const EdgeInsets.all(18), children: [
           Card(child: Padding(padding: const EdgeInsets.all(18), child: Row(children: [
-            PlayerAvatar(photo: g.photo, radius: 38, fallback: const Icon(Icons.sports_soccer, color: AppColors.gold)),
+            Hero(
+              tag: 'goalkeeper-avatar-${g.id}',
+              child: PlayerAvatar(photo: g.photo, radius: 38,
+                fallback: const Icon(Icons.sports_soccer, color: AppColors.gold)),
+            ),
             const SizedBox(width: 14),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(g.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)), Text('${g.points} pontos • ${g.competition ?? 'competência atual'}', style: const TextStyle(color: AppColors.muted))])),
           ]))),
@@ -285,8 +323,51 @@ class _StatsGrid extends StatelessWidget {
 class _Stat extends StatelessWidget {
   const _Stat({required this.label, required this.value});
   final String label, value;
+
   @override
-  Widget build(BuildContext context) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)), Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 11))])));
+  Widget build(BuildContext context) {
+    final isPercentage = value.endsWith('%');
+    final numericText = isPercentage
+        ? value.substring(0, value.length - 1)
+        : value;
+    final numericValue = double.tryParse(numericText);
+    final decimals = numericText.contains('.')
+        ? numericText.split('.').last.length.clamp(0, 2).toInt()
+        : 0;
+
+    return MotionReveal(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (numericValue != null)
+                MotionNumber(
+                  value: numericValue,
+                  decimals: decimals,
+                  suffix: isPercentage ? '%' : '',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                )
+              else
+                Text(value, style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                )),
+              Text(label, style: const TextStyle(
+                color: AppColors.muted,
+                fontSize: 11,
+              )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _GoalkeeperDetails {
@@ -332,8 +413,20 @@ class _GoalkeeperAssessment extends StatelessWidget {
             SizedBox(
               height: 250,
               width: double.infinity,
-              child: CustomPaint(
-                painter: _RadarPainter(values: values, lineColor: AppColors.redLight, gridColor: AppColors.muted.withValues(alpha: 0.35)),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: 1),
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 850),
+                curve: Curves.easeOutCubic,
+                builder: (context, progress, _) => CustomPaint(
+                  painter: _RadarPainter(
+                    values: values,
+                    progress: progress,
+                    lineColor: AppColors.redLight,
+                    gridColor: AppColors.muted.withValues(alpha: 0.35),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -353,8 +446,9 @@ class _GoalkeeperAssessment extends StatelessWidget {
 }
 
 class _RadarPainter extends CustomPainter {
-  _RadarPainter({required this.values, required this.lineColor, required this.gridColor});
+  _RadarPainter({required this.values, required this.progress, required this.lineColor, required this.gridColor});
   final List<double> values;
+  final double progress;
   final Color lineColor;
   final Color gridColor;
 
@@ -386,19 +480,19 @@ class _RadarPainter extends CustomPainter {
 
     final dataPath = Path();
     for (var i = 0; i < count; i++) {
-      final p = point(i, (values[i].clamp(0, 20)) / 20);
+      final p = point(i, ((values[i].clamp(0, 20)) / 20) * progress);
       if (i == 0) { dataPath.moveTo(p.dx, p.dy); } else { dataPath.lineTo(p.dx, p.dy); }
     }
     dataPath.close();
     canvas.drawPath(dataPath, Paint()..color = lineColor.withValues(alpha: 0.18)..style = PaintingStyle.fill);
     canvas.drawPath(dataPath, Paint()..color = lineColor..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeJoin = StrokeJoin.round);
     for (var i = 0; i < count; i++) {
-      final p = point(i, (values[i].clamp(0, 20)) / 20);
+      final p = point(i, ((values[i].clamp(0, 20)) / 20) * progress);
       canvas.drawCircle(p, 4, Paint()..color = lineColor);
     }
   }
 
   @override
   bool shouldRepaint(covariant _RadarPainter oldDelegate) =>
-      oldDelegate.values != values || oldDelegate.lineColor != lineColor || oldDelegate.gridColor != gridColor;
+      oldDelegate.values != values || oldDelegate.progress != progress || oldDelegate.lineColor != lineColor || oldDelegate.gridColor != gridColor;
 }

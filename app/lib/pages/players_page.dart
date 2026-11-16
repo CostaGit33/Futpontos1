@@ -6,6 +6,7 @@ import '../core/app_theme.dart';
 import '../data/analytics.dart';
 import '../data/player.dart';
 import '../widgets/sports_banner.dart';
+import '../widgets/motion.dart';
 
 /// Avaliação técnica manual realizada em campo. Escala original: 0 a 20.
 /// A associação é pelo nome exato, como no cadastro manual do PWA.
@@ -150,13 +151,18 @@ class _PlayersPageState extends State<PlayersPage> {
               const Card(child: Padding(padding: EdgeInsets.all(18),
                 child: Text('Nenhum jogador encontrado.')))
             else
-              ...players.asMap().entries.map((entry) => Card(
+              ...players.asMap().entries.map((entry) => MotionReveal(
+                delay: Duration(milliseconds: 28 * entry.key.clamp(0, 7).toInt()),
+                child: Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
-                  leading: PlayerAvatar(
-                    photo: entry.value.photo,
-                    radius: 20,
-                    fallback: Text('${entry.key + 1}'),
+                  leading: Hero(
+                    tag: 'player-avatar-${entry.value.id}',
+                    child: PlayerAvatar(
+                      photo: entry.value.photo,
+                      radius: 20,
+                      fallback: Text('${entry.key + 1}'),
+                    ),
                   ),
                   title: Text(entry.value.name, style: const TextStyle(fontWeight: FontWeight.w800)),
                   subtitle: Text('${entry.value.wins} vitórias • ${entry.value.goals} gols • ${entry.value.saves} defesas'),
@@ -224,7 +230,7 @@ class _PlayersPageState extends State<PlayersPage> {
                     ));
                   },
                 ),
-              )),
+              ))),
           ],
         ),
       );
@@ -301,12 +307,15 @@ class PlayerProfilePage extends StatelessWidget {
           const Text('CONQUISTAS', style: TextStyle(
             color: AppColors.redLight, fontWeight: FontWeight.w900, letterSpacing: 1)),
           const SizedBox(height: 8),
-          Card(child: Column(children: achievements.map((a) => ListTile(
-            leading: Text(a.icon, style: const TextStyle(fontSize: 22)),
-            title: Text(a.title, style: const TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: Text('${a.description} • ${a.progress}/${a.target}'),
-            trailing: Icon(a.unlocked ? Icons.check_circle : Icons.lock_outline,
-              color: a.unlocked ? AppColors.gold : AppColors.muted),
+          Card(child: Column(children: achievements.asMap().entries.map((entry) => MotionReveal(
+            delay: Duration(milliseconds: 35 * entry.key.clamp(0, 6).toInt()),
+            child: ListTile(
+              leading: Text(entry.value.icon, style: const TextStyle(fontSize: 22)),
+              title: Text(entry.value.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+              subtitle: Text('${entry.value.description} • ${entry.value.progress}/${entry.value.target}'),
+              trailing: Icon(entry.value.unlocked ? Icons.check_circle : Icons.lock_outline,
+                color: entry.value.unlocked ? AppColors.gold : AppColors.muted),
+            ),
           )).toList())),
         ],
       ),
@@ -457,10 +466,13 @@ class _ProfilePhotoEditorState extends State<_ProfilePhotoEditor> {
     mainAxisSize: MainAxisSize.min,
     children: [
       Stack(alignment: Alignment.bottomRight, children: [
-        PlayerAvatar(
-          photo: _photo,
-          radius: 34,
-          fallback: const Icon(Icons.person, size: 34),
+        Hero(
+          tag: 'player-avatar-${widget.player.id}',
+          child: PlayerAvatar(
+            photo: _photo,
+            radius: 34,
+            fallback: const Icon(Icons.person, size: 34),
+          ),
         ),
         if (_uploading)
           const Positioned.fill(child: CircleAvatar(
@@ -484,9 +496,19 @@ class _ProfilePhotoEditorState extends State<_ProfilePhotoEditor> {
           ),
       ]),
       const SizedBox(height: 8),
-      TextButton(
-        onPressed: _uploading ? null : _chooseAndUpload,
-        child: Text(_uploading ? 'Enviando...' : 'Alterar foto'),
+      MotionTap(
+        onTap: _uploading ? null : _chooseAndUpload,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          child: Text(
+            _uploading ? 'Enviando...' : 'Alterar foto',
+            style: TextStyle(
+              color: _uploading ? AppColors.muted : AppColors.redLight,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
       ),
     ],
   );
@@ -500,7 +522,10 @@ class _ProfileMetric extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
     decoration: BoxDecoration(color: AppColors.raised, borderRadius: BorderRadius.circular(12)),
-    child: Text('$label: $value', style: const TextStyle(fontWeight: FontWeight.w700)),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w700)),
+      MotionNumber(value: value, style: const TextStyle(fontWeight: FontWeight.w700)),
+    ]),
   );
 }
 
@@ -517,7 +542,7 @@ class _AssessmentBar extends StatelessWidget {
       ]),
       const SizedBox(height: 5),
       ClipRRect(borderRadius: BorderRadius.circular(20),
-        child: LinearProgressIndicator(value: (score / 20).clamp(0, 1).toDouble(),
+        child: MotionProgressBar(value: (score / 20).clamp(0, 1).toDouble(),
           minHeight: 8, backgroundColor: AppColors.raised)),
     ]),
   );

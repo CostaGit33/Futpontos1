@@ -8,6 +8,7 @@ import '../data/goalkeeper.dart';
 import '../data/history.dart';
 import '../data/player.dart';
 import '../widgets/sports_banner.dart';
+import '../widgets/motion.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, required this.api, required this.onLogout});
@@ -375,11 +376,20 @@ class _Stats extends StatelessWidget {
   Widget build(BuildContext context) => GridView.count(
     crossAxisCount: 3, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
     mainAxisSpacing: 7, crossAxisSpacing: 7, childAspectRatio: 1.25,
-    children: items.map((e) => Card(child: Padding(padding: const EdgeInsets.all(8),
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Text(e.$2.toString(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-        Text(e.$1, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: AppColors.muted)),
-      ])))).toList(),
+    children: items.asMap().entries.map((entry) => MotionReveal(
+      delay: Duration(milliseconds: 45 * entry.key),
+      child: Card(child: Padding(padding: const EdgeInsets.all(8),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          if (entry.value.$2 is num)
+            MotionNumber(value: entry.value.$2 as num,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))
+          else
+            Text(entry.value.$2.toString(),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          Text(entry.value.$1, textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 10, color: AppColors.muted)),
+        ])),
+    ))).toList(),
   );
 }
 
@@ -394,7 +404,7 @@ class _History extends StatelessWidget {
     return Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(children: List.generate(values.length, (i) =>
       Padding(padding: const EdgeInsets.symmetric(vertical: 5), child: Column(children: [
         Row(children: [Expanded(child: Text(labels[i])), Text(values[i].toStringAsFixed(0) + ' pts')]),
-        LinearProgressIndicator(value: max <= 0 ? 0 : (values[i] / max).clamp(0.0, 1.0)),
+        MotionProgressBar(value: max <= 0 ? 0 : (values[i] / max).clamp(0.0, 1.0)),
       ]))))));
   }
 }
@@ -411,7 +421,7 @@ class _Assessment extends StatelessWidget {
       Text('Média técnica: ' + average.toStringAsFixed(1) + '/20'),
       ...List.generate(values!.length, (i) => Column(children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(labels[i]), Text(values![i].toStringAsFixed(1))]),
-        LinearProgressIndicator(value: (values![i] / 20).clamp(0.0, 1.0)),
+        MotionProgressBar(value: (values![i] / 20).clamp(0.0, 1.0), minHeight: 8),
       ])),
     ])));
   }

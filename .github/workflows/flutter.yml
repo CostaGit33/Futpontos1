@@ -2,13 +2,13 @@ name: Flutter validation and build
 
 on:
   push:
-    branches: [main]
+    branches: [main, motion-design-futpontos]
     paths:
       - 'app/**'
       - 'docs/**'
       - '.github/workflows/flutter.yml'
   pull_request:
-    branches: [main]
+    branches: [main, motion-design-futpontos]
     paths:
       - 'app/**'
       - 'docs/**'
