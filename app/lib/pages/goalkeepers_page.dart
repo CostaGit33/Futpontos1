@@ -205,22 +205,31 @@ class _GoalkeeperDetailPageState extends State<GoalkeeperDetailPage> {
     body: FutureBuilder<_GoalkeeperDetails>(
       future: _future,
       builder: (context, snapshot) {
-        if (snapshot.hasError) return _Error(message: snapshot.error.toString(), onRetry: () async => setState(() => _future = _load()));
-        if (!snapshot.hasData) return Center(child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Hero(
-              tag: 'goalkeeper-avatar-${widget.goalkeeper.id}',
-              child: PlayerAvatar(
-                photo: widget.goalkeeper.photo,
-                radius: 38,
-                fallback: const Icon(Icons.sports_soccer, color: AppColors.gold),
-              ),
+        if (snapshot.hasError) {
+          return _Error(
+            message: snapshot.error.toString(),
+            onRetry: () async => setState(() => _future = _load()),
+          );
+        }
+        if (!snapshot.hasData) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Hero(
+                  tag: 'goalkeeper-avatar-${widget.goalkeeper.id}',
+                  child: PlayerAvatar(
+                    photo: widget.goalkeeper.photo,
+                    radius: 38,
+                    fallback: const Icon(Icons.sports_soccer, color: AppColors.gold),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const CircularProgressIndicator(),
+              ],
             ),
-            const SizedBox(height: 14),
-            const CircularProgressIndicator(),
-          ],
-        ));
+          );
+        }
         final g = snapshot.data!.goalkeeper;
         return ListView(padding: const EdgeInsets.all(18), children: [
           Card(child: Padding(padding: const EdgeInsets.all(18), child: Row(children: [
