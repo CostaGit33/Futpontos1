@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/api_client.dart';
 import '../core/app_theme.dart';
 import '../data/analytics.dart';
@@ -255,7 +257,7 @@ class PlayerProfilePage extends StatelessWidget {
           Card(child: Padding(
             padding: const EdgeInsets.all(18),
             child: Row(children: [
-              Hero(tag: 'player-avatar-${player.id}', child: PlayerAvatar(photo: player.photo, radius: 34, fallback: const Icon(Icons.person, size: 34))),
+              _OwnPlayerPhotoEditor(api: api, player: player),
               const SizedBox(width: 14),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(player.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
@@ -321,6 +323,157 @@ class PlayerProfilePage extends StatelessWidget {
   }
 }
 
+
+
+class _OwnPlayerPhotoEditor extends StatefulWidget {
+  const _OwnPlayerPhotoEditor({required this.api, required this.player});
+  final ApiClient api;
+  final Player player;
+
+  @override
+  State<_OwnPlayerPhotoEditor> createState() => _OwnPlayerPhotoEditorState();
+}
+
+class _OwnPlayerPhotoEditorState extends State<_OwnPlayerPhotoEditor> {
+  final ImagePicker _picker = ImagePicker();
+  String? _photo;
+  String? _token;
+  bool _authorized = false;
+  bool _checking = true;
+  bool _uploading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _photo = widget.player.photo;
+    _verifyOwnership();
+  }
+
+  Future<bool> _verifyOwnership() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('futpontos_auth_token');
+      if (token == null || token.isEmpty) return false;
+      final session = await widget.api.authMe(token);
+      final links = session['vinculos'];
+      final approved = links is List && links.any((item) =>
+        item is Map &&
+        item['profile_type'] == 'jogador' &&
+        '${item['profile_id']}' == '${widget.player.id}' &&
+        item['status'] == 'approved');
+      if (!approved) return false;
+      _token = token;
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      if (mounted) setState(() {
+        _authorized = _token != null;
+        _checking = false;
+      });
+    }
+  }
+
+  Future<void> _chooseAndUpload() async {
+    if (_uploading || !_authorized) return;
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (sheetContext) => SafeArea(child: Wrap(children: [
+        ListTile(
+          leading: const Icon(Icons.photo_library_outlined),
+          title: const Text('Escolher da galeria'),
+          onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+        ),
+        ListTile(
+          leading: const Icon(Icons.photo_camera_outlined),
+          title: const Text('Tirar uma foto'),
+          onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+        ),
+      ])),
+    );
+    if (source == null || !mounted) return;
+    try {
+      final image = await _picker.pickImage(source: source, imageQuality: 85, maxWidth: 1400);
+      if (image == null || !mounted) return;
+      final bytes = await image.readAsBytes();
+      if (bytes.length > 5 * 1024 * 1024) {
+        throw Exception('A imagem deve ter no máximo 5 MB.');
+      }
+      setState(() => _uploading = true);
+      final token = _token;
+      if (token == null || token.isEmpty) {
+        throw Exception('Entre na sua conta para alterar a foto.');
+      }
+      final result = await widget.api.uploadPlayerPhoto(
+        playerId: widget.player.id,
+        bytes: bytes,
+        filename: image.name,
+        token: token,
+      );
+      if (result['success'] != true) {
+        throw Exception('A API não confirmou a gravação da foto.');
+      }
+      final savedPhoto = resolvePlayerPhoto(result['foto']);
+      if (savedPhoto == null) throw Exception('A API não retornou uma foto válida.');
+      if (!mounted) return;
+      setState(() => _photo = savedPhoto);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Foto do seu perfil atualizada com sucesso.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Stack(alignment: Alignment.bottomRight, children: [
+        Hero(
+          tag: 'player-avatar-${widget.player.id}',
+          child: PlayerAvatar(
+            photo: _photo,
+            radius: 34,
+            fallback: const Icon(Icons.person, size: 34),
+          ),
+        ),
+        if (_uploading)
+          const Positioned.fill(child: CircleAvatar(
+            radius: 34,
+            backgroundColor: Color(0x99000000),
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ))
+        else if (_authorized && !_checking)
+          Positioned(
+            right: -7,
+            bottom: -7,
+            child: IconButton.filled(
+              tooltip: 'Alterar sua foto',
+              visualDensity: VisualDensity.compact,
+              onPressed: _chooseAndUpload,
+              icon: const Icon(Icons.camera_alt_outlined, size: 16),
+            ),
+          ),
+      ]),
+      if (_authorized && !_checking) ...[
+        const SizedBox(height: 6),
+        TextButton(
+          onPressed: _uploading ? null : _chooseAndUpload,
+          child: Text(_uploading ? 'Enviando...' : 'Alterar foto'),
+        ),
+      ],
+    ],
+  );
+}
 
 class _ProfileMetric extends StatelessWidget {
   const _ProfileMetric(this.label, this.value);
