@@ -304,12 +304,15 @@ class PlayerProfilePage extends StatelessWidget {
           const Text('CONQUISTAS', style: TextStyle(
             color: AppColors.redLight, fontWeight: FontWeight.w900, letterSpacing: 1)),
           const SizedBox(height: 8),
-          Card(child: Column(children: achievements.map((a) => ListTile(
-            leading: Text(a.icon, style: const TextStyle(fontSize: 22)),
-            title: Text(a.title, style: const TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: Text('${a.description} • ${a.progress}/${a.target}'),
-            trailing: Icon(a.unlocked ? Icons.check_circle : Icons.lock_outline,
-              color: a.unlocked ? AppColors.gold : AppColors.muted),
+          Card(child: Column(children: achievements.asMap().entries.map((entry) => MotionReveal(
+            delay: Duration(milliseconds: 45 * entry.key),
+            child: ListTile(
+              leading: Text(entry.value.icon, style: const TextStyle(fontSize: 22)),
+              title: Text(entry.value.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+              subtitle: Text('${entry.value.description} • ${entry.value.progress}/${entry.value.target}'),
+              trailing: Icon(entry.value.unlocked ? Icons.check_circle : Icons.lock_outline,
+                color: entry.value.unlocked ? AppColors.gold : AppColors.muted),
+            ),
           )).toList())),
         ],
       ),
@@ -503,7 +506,10 @@ class _ProfileMetric extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
     decoration: BoxDecoration(color: AppColors.raised, borderRadius: BorderRadius.circular(12)),
-    child: Text('$label: $value', style: const TextStyle(fontWeight: FontWeight.w700)),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w700)),
+      MotionNumber(value: value, style: const TextStyle(fontWeight: FontWeight.w700)),
+    ]),
   );
 }
 
@@ -520,7 +526,7 @@ class _AssessmentBar extends StatelessWidget {
       ]),
       const SizedBox(height: 5),
       ClipRRect(borderRadius: BorderRadius.circular(20),
-        child: LinearProgressIndicator(value: (score / 20).clamp(0, 1).toDouble(),
+        child: MotionProgressBar(value: (score / 20).clamp(0, 1).toDouble(),
           minHeight: 8, backgroundColor: AppColors.raised)),
     ]),
   );
