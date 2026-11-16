@@ -8,7 +8,7 @@ on:
       - 'docs/**'
       - '.github/workflows/flutter.yml'
   pull_request:
-    branches: [main]
+    branches: [main, motion-design-futpontos]
     paths:
       - 'app/**'
       - 'docs/**'
