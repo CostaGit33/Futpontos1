@@ -6,6 +6,7 @@ import '../core/app_theme.dart';
 import '../data/analytics.dart';
 import '../data/player.dart';
 import '../widgets/sports_banner.dart';
+import '../widgets/motion.dart';
 
 /// Avaliação técnica manual realizada em campo. Escala original: 0 a 20.
 /// A associação é pelo nome exato, como no cadastro manual do PWA.
@@ -150,7 +151,9 @@ class _PlayersPageState extends State<PlayersPage> {
               const Card(child: Padding(padding: EdgeInsets.all(18),
                 child: Text('Nenhum jogador encontrado.')))
             else
-              ...players.asMap().entries.map((entry) => Card(
+              ...players.asMap().entries.map((entry) => MotionReveal(
+                delay: Duration(milliseconds: 32 * entry.key),
+                child: Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
                   leading: PlayerAvatar(
