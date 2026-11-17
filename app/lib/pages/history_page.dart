@@ -28,7 +28,7 @@ class _HistoryPageState extends State<HistoryPage> {
   Future<void> _reload() async {
     final next = HistoryCollection.load(widget.api);
     setState(() => _future = next);
-    try { await next; } catch (_) {}
+    await next;
   }
 
   @override

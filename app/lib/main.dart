@@ -37,14 +37,37 @@ class AuthGate extends StatefulWidget {
 class _AuthGateState extends State<AuthGate> {
   final ApiClient api = ApiClient();
   late final AuthService auth = AuthService(api);
-  late final Future<bool> restored = auth.restoreSession();
+  late Future<bool> restored;
   bool? signedIn;
 
+  @override
+  void initState() {
+    super.initState();
+    restored = auth.restoreSession();
+  }
+
+  Future<void> _retryRestore() async {
+    setState(() {
+      signedIn = null;
+      restored = auth.restoreSession();
+    });
+  }
+
   Future<void> _logout() async {
+    String? logoutWarning;
     try {
       await auth.logout();
-    } catch (_) {}
-    if (mounted) setState(() => signedIn = false);
+    } catch (error) {
+      logoutWarning = error.toString();
+      debugPrint('Falha ao encerrar sessão no servidor: $error');
+    }
+    if (!mounted) return;
+    setState(() => signedIn = false);
+    if (logoutWarning != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sessão encerrada neste aparelho. O servidor não confirmou o logout: $logoutWarning')),
+      );
+    }
   }
 
   @override
@@ -58,6 +81,31 @@ class _AuthGateState extends State<AuthGate> {
     return FutureBuilder<bool>(
       future: restored,
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.cloud_off, size: 42),
+                    const SizedBox(height: 12),
+                    const Text('Não foi possível verificar sua sessão.'),
+                    const SizedBox(height: 6),
+                    Text(snapshot.error.toString(), textAlign: TextAlign.center),
+                    const SizedBox(height: 14),
+                    FilledButton.icon(
+                      onPressed: _retryRestore,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Tentar novamente'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
         if (!snapshot.hasData) {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
@@ -865,9 +913,7 @@ class _MonthlyPointsComparisonState extends State<_MonthlyPointsComparison> {
   Future<void> _reload() async {
     final next = HistoryCollection.load(widget.api);
     setState(() => _history = next);
-    try {
-      await next;
-    } catch (_) {}
+    await next;
   }
 
   String _monthLabel(String key) {

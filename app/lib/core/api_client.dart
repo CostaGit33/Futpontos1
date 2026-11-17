@@ -1,6 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+class ApiException implements Exception {
+  const ApiException(this.statusCode, this.message);
+  final int statusCode;
+  final String message;
+  @override
+  String toString() => message;
+}
+
 class ApiClient {
   ApiClient({http.Client? client}) : _client = client ?? http.Client();
 
@@ -20,17 +28,19 @@ class ApiClient {
   /// Reaproveita uma consulta GET enquanto a mesma rota já está em andamento.
   /// Evita que telas montadas simultaneamente disparem a mesma requisição.
   Future<dynamic> get(String path) async {
-    final pending = _pendingGets[path];
+    // Não compartilha uma requisição autenticada entre sessões diferentes.
+    final requestKey = '$path|${_bearerToken ?? 'public'}';
+    final pending = _pendingGets[requestKey];
     if (pending != null) return pending;
 
     final request = _fetch(path);
-    _pendingGets[path] = request;
+    _pendingGets[requestKey] = request;
 
     try {
       return await request;
     } finally {
-      if (identical(_pendingGets[path], request)) {
-        _pendingGets.remove(path);
+      if (identical(_pendingGets[requestKey], request)) {
+        _pendingGets.remove(requestKey);
       }
     }
   }
@@ -52,7 +62,7 @@ class ApiClient {
       final message = data is Map
           ? (data['error'] ?? data['message'] ?? 'Falha na API').toString()
           : 'Falha na API';
-      throw Exception(message);
+      throw ApiException(response.statusCode, message);
     }
     return data;
   }
@@ -67,7 +77,7 @@ class ApiClient {
     ).timeout(const Duration(seconds: 20));
     final data = _decodeResponse(response);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(_errorMessage(data));
+      throw ApiException(response.statusCode, _errorMessage(data));
     }
     return data;
   }
@@ -80,7 +90,7 @@ class ApiClient {
     ).timeout(const Duration(seconds: 20));
     final data = _decodeResponse(response);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(_errorMessage(data));
+      throw ApiException(response.statusCode, _errorMessage(data));
     }
     return data;
   }
@@ -93,7 +103,7 @@ class ApiClient {
     ).timeout(const Duration(seconds: 20));
     final data = _decodeResponse(response);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(_errorMessage(data));
+      throw ApiException(response.statusCode, _errorMessage(data));
     }
     return data;
   }
@@ -105,7 +115,7 @@ class ApiClient {
     ).timeout(const Duration(seconds: 20));
     final data = _decodeResponse(response);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(_errorMessage(data));
+      throw ApiException(response.statusCode, _errorMessage(data));
     }
     return data;
   }
@@ -121,7 +131,7 @@ class ApiClient {
     ).timeout(const Duration(seconds: 20));
     final data = _decodeResponse(response);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(_errorMessage(data));
+      throw ApiException(response.statusCode, _errorMessage(data));
     }
     if (data is! Map) throw const FormatException('Resposta inválida no login.');
     return Map<String, dynamic>.from(data);
@@ -154,7 +164,7 @@ class ApiClient {
     ).timeout(const Duration(seconds: 15));
     final data = _decodeResponse(response);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(_errorMessage(data));
+      throw ApiException(response.statusCode, _errorMessage(data));
     }
     if (data is! Map) throw const FormatException('Resposta inválida da sessão.');
     return Map<String, dynamic>.from(data);
@@ -176,7 +186,7 @@ class ApiClient {
     final response = await http.Response.fromStream(streamed);
     final data = _decodeResponse(response);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(_errorMessage(data));
+      throw ApiException(response.statusCode, _errorMessage(data));
     }
     if (data is! Map) throw const FormatException('Resposta inválida no envio da foto.');
     return Map<String, dynamic>.from(data);
@@ -198,7 +208,7 @@ class ApiClient {
     final response = await http.Response.fromStream(streamed);
     final data = _decodeResponse(response);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(_errorMessage(data));
+      throw ApiException(response.statusCode, _errorMessage(data));
     }
     if (data is! Map) throw const FormatException('Resposta inválida no envio da foto.');
     return Map<String, dynamic>.from(data);

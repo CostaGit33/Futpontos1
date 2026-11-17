@@ -52,4 +52,20 @@ void main() {
     await api.list('/jogadores');
     expect(requestCount, 2);
   });
+  test('expõe status HTTP para distinguir sessão expirada de falha de servidor', () async {
+    final client = MockClient((request) async => http.Response(
+      jsonEncode({'error': 'Sessão inválida ou expirada.'}),
+      401,
+      headers: {'content-type': 'application/json; charset=utf-8'},
+    ));
+    final api = ApiClient(client: client);
+
+    await expectLater(
+      api.authMe('token-expirado'),
+      throwsA(isA<ApiException>()
+          .having((error) => error.statusCode, 'statusCode', 401)
+          .having((error) => error.message, 'message', 'Sessão inválida ou expirada.')),
+    );
+  });
+
 }

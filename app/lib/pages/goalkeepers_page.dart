@@ -32,7 +32,7 @@ class _GoalkeepersPageState extends State<GoalkeepersPage> {
   Future<void> _reload() async {
     final next = _load();
     setState(() => _future = next);
-    try { await next; } catch (_) {}
+    await next;
   }
 
   @override
