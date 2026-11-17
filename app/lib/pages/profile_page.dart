@@ -1,7 +1,7 @@
 // ignore_for_file: prefer_interpolation_to_compose_strings, curly_braces_in_flow_control_structures, deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/token_storage.dart';
 import '../core/api_client.dart';
 import '../core/app_theme.dart';
 import '../data/goalkeeper.dart';
@@ -29,8 +29,8 @@ class _ProfilePageState extends State<ProfilePage> {
   Map<String, dynamic> _map(dynamic v) => v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
 
   Future<Map<String, dynamic>> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('futpontos_auth_token');
+    const tokenStorage = TokenStorage();
+    final token = await tokenStorage.readToken();
     if (token == null || token.isEmpty) throw Exception('Sessão não encontrada. Entre novamente.');
     final session = await widget.api.authMe(token);
     final user = _map(session['user']);
@@ -97,8 +97,8 @@ class _ProfilePageState extends State<ProfilePage> {
       if (image == null) return;
       final bytes = await image.readAsBytes();
       if (bytes.length > 5 * 1024 * 1024) throw Exception('A imagem deve ter no máximo 5 MB.');
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('futpontos_auth_token');
+      const tokenStorage = TokenStorage();
+      final token = await tokenStorage.readToken();
       if (token == null || token.isEmpty) throw Exception('Sessão expirada. Entre novamente.');
       setState(() => _photoBusy = true);
       final id = int.tryParse(link['profile_id'].toString()) ?? 0;
